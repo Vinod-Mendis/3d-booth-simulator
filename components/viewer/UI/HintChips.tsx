@@ -5,59 +5,57 @@ import { ViewerMode } from '@/lib/types';
 
 interface HintChipsProps {
   mode: ViewerMode;
-  isDark: boolean;
   hasModel: boolean;
 }
 
-export const HintChips: React.FC<HintChipsProps> = ({ mode, isDark, hasModel }) => {
+export const HintChips: React.FC<HintChipsProps> = ({ mode, hasModel }) => {
   if (!hasModel) return null;
 
   return (
-    <div className="absolute bottom-4 inset-x-0 z-20 flex items-center justify-center pointer-events-none select-none px-4">
-      <div
-        className={`pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full border backdrop-blur-md shadow-lg text-[11px] font-medium transition-all ${
-          isDark
-            ? 'bg-slate-950/75 border-slate-800/80 text-slate-300 shadow-black/30'
-            : 'bg-white/80 border-slate-200 text-slate-700 shadow-slate-300/30'
-        }`}
-      >
+    <div className="absolute bottom-3 inset-x-0 z-20 flex items-center justify-center pointer-events-none select-none px-4">
+      <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 px-3 py-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-muted)] text-[11px] font-sans">
         {mode === 'orbit' ? (
           <>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-500/15 border border-slate-500/20">Left drag</kbd>
+              <kbd className="px-1 py-0.2 rounded-[var(--radius-sm)] text-[10px] font-mono bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)]">L-Drag</kbd>
               <span>Rotate</span>
             </span>
-            <span className="text-slate-500">•</span>
+            <span className="text-[var(--border-default)]">•</span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-500/15 border border-slate-500/20">Right drag</kbd>
+              <kbd className="px-1 py-0.2 rounded-[var(--radius-sm)] text-[10px] font-mono bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)]">R-Drag</kbd>
               <span>Pan</span>
             </span>
-            <span className="text-slate-500">•</span>
+            <span className="text-[var(--border-default)]">•</span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-500/15 border border-slate-500/20">Scroll</kbd>
+              <kbd className="px-1 py-0.2 rounded-[var(--radius-sm)] text-[10px] font-mono bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)]">Wheel</kbd>
               <span>Zoom</span>
+            </span>
+            <span className="text-[var(--border-default)]">•</span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1 py-0.2 rounded-[var(--radius-sm)] text-[10px] font-mono bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)]">R</kbd>
+              <span>Reset</span>
             </span>
           </>
         ) : (
           <>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-500/15 border border-slate-500/20">Click / Drag</kbd>
+              <kbd className="px-1 py-0.2 rounded-[var(--radius-sm)] text-[10px] font-mono bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)]">Click</kbd>
               <span>Look</span>
             </span>
-            <span className="text-slate-500">•</span>
+            <span className="text-[var(--border-default)]">•</span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-500/15 border border-slate-500/20">W A S D / Arrows</kbd>
+              <kbd className="px-1 py-0.2 rounded-[var(--radius-sm)] text-[10px] font-mono bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)]">WASD</kbd>
               <span>Move</span>
             </span>
-            <span className="text-slate-500">•</span>
+            <span className="text-[var(--border-default)]">•</span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-500/15 border border-slate-500/20">Shift</kbd>
-              <span>Run</span>
+              <kbd className="px-1 py-0.2 rounded-[var(--radius-sm)] text-[10px] font-mono bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)]">Shift</kbd>
+              <span>Sprint</span>
             </span>
-            <span className="text-slate-500">•</span>
+            <span className="text-[var(--border-default)]">•</span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-500/15 border border-slate-500/20">Esc</kbd>
-              <span>Release mouse</span>
+              <kbd className="px-1 py-0.2 rounded-[var(--radius-sm)] text-[10px] font-mono bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)]">Esc</kbd>
+              <span>Unlock</span>
             </span>
           </>
         )}
