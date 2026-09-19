@@ -21,7 +21,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
   mode,
   onGizmoDraggingChange,
 }) => {
-  const { camera, gl } = useThree();
+  const { camera, gl, scene } = useThree();
 
   const screens = useScreensStore((s) => s.screens);
   const selectedScreenId = useScreensStore((s) => s.selectedScreenId);
@@ -34,6 +34,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
   const setEligibleScreens = useScreensStore((s) => s.setEligibleScreens);
   const setLiveWebScreens = useScreensStore((s) => s.setLiveWebScreens);
   const adoptedMeshNames = useScreensStore((s) => s.adoptedMeshNames);
+  const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
 
   const selectedScreen = useMemo(() => {
     return screens.find((s) => s.id === selectedScreenId) || null;
@@ -76,6 +77,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
       }
 
       camera.updateMatrixWorld();
+      scene.updateMatrixWorld(true);
       camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
       projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
       frustum.setFromProjectionMatrix(projScreenMatrix);
@@ -132,20 +134,27 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
         const toCamFromScreen = camera.position.clone().sub(worldPos).normalize();
         if (screenNormal.dot(toCamFromScreen) <= 0) continue; // Looking at back side
 
-        // 5-point Raycast Occlusion test against occluderMeshes
-        // Known limitation: a screen partly behind a pillar is either fully shown or fully hidden.
+        // 9-point Raycast Occlusion test against occluderMeshes
+        // Tests center, bottom edge (critical for reception counters/desks), corners, and midpoints
         const hw = screen.width * 0.48;
         const hh = screen.height * 0.48;
         const testPoints = [
-          new THREE.Vector3(0, 0, 0),
-          new THREE.Vector3(-hw, hh, 0),
-          new THREE.Vector3(hw, hh, 0),
-          new THREE.Vector3(-hw, -hh, 0),
-          new THREE.Vector3(hw, -hh, 0),
+          new THREE.Vector3(0, 0, 0),         // center
+          new THREE.Vector3(0, -hh, 0),        // bottom-center (where counters occlude)
+          new THREE.Vector3(-hw, -hh, 0),      // bottom-left
+          new THREE.Vector3(hw, -hh, 0),       // bottom-right
+          new THREE.Vector3(-hw, 0, 0),        // mid-left
+          new THREE.Vector3(hw, 0, 0),         // mid-right
+          new THREE.Vector3(-hw, hh, 0),       // top-left
+          new THREE.Vector3(0, hh, 0),         // top-center
+          new THREE.Vector3(hw, hh, 0),        // top-right
         ];
 
         let blockedCount = 0;
-        for (const localPt of testPoints) {
+        let centerBlocked = false;
+
+        for (let i = 0; i < testPoints.length; i++) {
+          const localPt = testPoints[i];
           const ptWorld = localPt.clone().applyQuaternion(worldQuat).add(worldPos);
           const dir = ptWorld.clone().sub(camera.position);
           const distToPt = dir.length();
@@ -156,11 +165,17 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
           // Blocked only if hit.distance < distanceToTargetPoint - 0.05
           if (hits.length > 0 && hits[0].distance < distToPt - 0.05) {
             blockedCount++;
+            if (i === 0) {
+              centerBlocked = true;
+            }
           }
         }
 
-        // Fully occluded if all 5 points are blocked
-        if (blockedCount === 5) continue;
+        // Occluded if center is blocked OR any test point is blocked by foreground geometry (e.g. counter, pillar, walls)
+        const isInteractive = interactiveScreenId === screen.id;
+        if (!isInteractive && (centerBlocked || blockedCount >= 1)) {
+          continue;
+        }
 
         eligibleWebCandidates.push({ id: screen.id, distance: dist });
       }
@@ -191,7 +206,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [screens, modelData, camera, occluderMeshes, setEligibleScreens, setLiveWebScreens]);
+  }, [screens, modelData, camera, scene, occluderMeshes, interactiveScreenId, setEligibleScreens, setLiveWebScreens]);
 
   // "Place on surface" click listener
   useEffect(() => {

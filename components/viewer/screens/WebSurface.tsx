@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Html } from '@react-three/drei';
-import * as THREE from 'three';
 import { ScreenData } from '@/lib/types';
 import { useScreensStore } from '@/lib/screensStore';
 
@@ -42,26 +41,6 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
   const scaleX = (screen.width * 40) / pixelWidth;
   const scaleY = (screen.height * 40) / pixelHeight;
 
-  // Wireframe calibration outline lines
-  const wireframeLine = useMemo(() => {
-    const hw = screen.width / 2;
-    const hh = screen.height / 2;
-    const points = [
-      new THREE.Vector3(-hw, -hh, 0),
-      new THREE.Vector3(hw, -hh, 0),
-      new THREE.Vector3(hw, hh, 0),
-      new THREE.Vector3(-hw, hh, 0),
-      new THREE.Vector3(-hw, -hh, 0),
-    ];
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const mat = new THREE.LineBasicMaterial({
-      color: 0x0ea5e9,
-      opacity: 0.3,
-      transparent: true,
-      depthWrite: false,
-    });
-    return new THREE.LineLoop(geo, mat);
-  }, [screen.width, screen.height]);
 
   // Client-side same-origin and mixed-content validation computed purely on client
   const clientSecurityError = useMemo(() => {
@@ -140,12 +119,10 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
 
   return (
     <group position={[0, 0, 0.0012]}>
-      {/* 1. Wireframe calibration boundary */}
-      <primitive object={wireframeLine} />
-
-      {/* 2. drei Html transformed layer */}
+      {/* drei Html transformed layer */}
       <Html
         transform
+        occlude={!isInteractive}
         scale={[scaleX, scaleY, 1]}
         pointerEvents="none"
         zIndexRange={[10, 0]}
