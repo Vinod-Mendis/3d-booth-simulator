@@ -133,8 +133,13 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
     }
   }, [isInteractive]);
 
+  // Do not render Html overlay or iframe when no URL is assigned
+  if (!rawUrl) {
+    return null;
+  }
+
   return (
-    <group position={[0, 0, 0.002]}>
+    <group position={[0, 0, 0.0012]}>
       {/* 1. Wireframe calibration boundary */}
       <primitive object={wireframeLine} />
 
@@ -208,7 +213,7 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
             <iframe
               ref={iframeRef}
               key={`${rawUrl}-${reloadCounter}`}
-              src={rawUrl}
+              src={rawUrl || undefined}
               title={screen.name}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               allow="fullscreen; autoplay; clipboard-write"
