@@ -30,6 +30,9 @@ export const ViewerApp: React.FC = () => {
 
   const focusedVideoScreenId = useScreensStore((s) => s.focusedVideoScreenId);
   const videoRuntime = useScreensStore((s) => s.videoRuntime);
+  const focusedWebScreenId = useScreensStore((s) => s.focusedWebScreenId);
+  const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
+  const setInteractiveScreenId = useScreensStore((s) => s.setInteractiveScreenId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
@@ -284,14 +287,44 @@ export const ViewerApp: React.FC = () => {
       )}
 
       {/* Walk Mode "Press E to play/pause" Floating Prompt */}
-      {mode === 'walk' && focusedVideoScreenId && (
-        <div className="fixed top-[calc(50%+20px)] left-1/2 -translate-x-1/2 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 text-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium shadow-2xl pointer-events-none flex items-center gap-2 z-30 animate-fade-in">
+      {mode === 'walk' && focusedVideoScreenId && !interactiveScreenId && (
+        <div className="fixed top-[calc(50%+20px)] left-1/2 -translate-x-1/2 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 text-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium shadow-2xl pointer-events-none flex items-center gap-2 z-40 animate-fade-in">
           <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-[11px] font-mono font-bold text-amber-400">
             E
           </kbd>
           <span>
             Press E to {videoRuntime[focusedVideoScreenId]?.isPlaying ? 'pause' : 'play'}
           </span>
+        </div>
+      )}
+
+      {/* Walk Mode "Press E to use this screen" Floating Prompt */}
+      {mode === 'walk' && focusedWebScreenId && !interactiveScreenId && (
+        <div className="fixed top-[calc(50%+20px)] left-1/2 -translate-x-1/2 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 text-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium shadow-2xl pointer-events-none flex items-center gap-2 z-40 animate-fade-in">
+          <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-[11px] font-mono font-bold text-sky-400">
+            E
+          </kbd>
+          <span>Press E to use this screen</span>
+        </div>
+      )}
+
+      {/* Interactive Web Screen Floating Header / Exit Button */}
+      {interactiveScreenId && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-950/90 backdrop-blur-xl border border-sky-500/50 shadow-2xl px-4 py-2 rounded-2xl animate-fade-in select-none">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-semibold text-slate-200">
+              Interacting with screen
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setInteractiveScreenId(null)}
+            className="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-sky-600 hover:bg-sky-500 text-white shadow-md transition cursor-pointer flex items-center gap-1.5"
+          >
+            <span>Exit screen</span>
+            <span className="text-[10px] text-sky-200 opacity-75">(or click canvas)</span>
+          </button>
         </div>
       )}
 

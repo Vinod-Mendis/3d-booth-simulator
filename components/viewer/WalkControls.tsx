@@ -36,8 +36,10 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
   const lastPointerPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const raycaster = useRef(new THREE.Raycaster());
   const lastRaycastTime = useRef(0);
+  const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
+  const prevInteractiveRef = useRef<string | null>(null);
 
-  // E key listener for video play/pause toggle
+  // E key listener for video play/pause or web screen interaction
   useEffect(() => {
     const handleInteractKey = (e: KeyboardEvent) => {
       if (e.key === 'e' || e.key === 'E') {
@@ -45,9 +47,27 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
         if (['INPUT', 'SELECT', 'TEXTAREA'].includes(activeTag)) {
           return;
         }
-        const focusedId = useScreensStore.getState().focusedVideoScreenId;
-        if (focusedId) {
-          useScreensStore.getState().togglePlayPause(focusedId);
+
+        const state = useScreensStore.getState();
+
+        // 1. If looking at a web screen: start interacting
+        if (state.focusedWebScreenId) {
+          e.preventDefault();
+          // Release pointer lock
+          if (document.pointerLockElement) {
+            document.exitPointerLock?.();
+          }
+          // Stop walk movement
+          keysDown.current.clear();
+          isDragging.current = false;
+          // Set interactive screen
+          state.setInteractiveScreenId(state.focusedWebScreenId);
+          return;
+        }
+
+        // 2. If looking at a video screen: toggle play/pause
+        if (state.focusedVideoScreenId) {
+          state.togglePlayPause(state.focusedVideoScreenId);
         }
       }
     };
@@ -56,8 +76,25 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     return () => {
       window.removeEventListener('keydown', handleInteractKey);
       useScreensStore.getState().setFocusedVideoScreenId(null);
+      useScreensStore.getState().setFocusedWebScreenId(null);
     };
   }, []);
+
+  // Re-lock pointer and restore focus when exiting screen interaction
+  useEffect(() => {
+    if (!interactiveScreenId && prevInteractiveRef.current) {
+      keysDown.current.clear();
+      isDragging.current = false;
+      gl.domElement.focus?.();
+      try {
+        const promise = gl.domElement.requestPointerLock?.();
+        if (promise && typeof (promise as Promise<void>).catch === 'function') {
+          (promise as Promise<void>).catch(() => {});
+        }
+      } catch {}
+    }
+    prevInteractiveRef.current = interactiveScreenId;
+  }, [interactiveScreenId, gl]);
 
   // Compute spawn position: 2m in front of model (+Z side) facing -Z
   const calculateSpawn = useRef(() => {
@@ -96,6 +133,8 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     ]);
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (useScreensStore.getState().interactiveScreenId) return;
+
       // Avoid capturing shortcuts if user is typing in an input
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
         return;
@@ -159,22 +198,25 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     };
 
     const handleClick = () => {
+      // If currently interacting with a screen, clicking canvas exits interaction
+      if (useScreensStore.getState().interactiveScreenId) {
+        useScreensStore.getState().setInteractiveScreenId(null);
+        return;
+      }
+
       domElement.focus?.();
       if (!isPointerLocked.current) {
         try {
           const promise = domElement.requestPointerLock?.();
           if (promise && typeof (promise as Promise<void>).catch === 'function') {
-            (promise as Promise<void>).catch(() => {
-              // Fallback to drag-to-look if pointer lock is rejected
-            });
+            (promise as Promise<void>).catch(() => {});
           }
-        } catch {
-          // Fallback to drag-to-look
-        }
+        } catch {}
       }
     };
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (useScreensStore.getState().interactiveScreenId) return;
       if (isPointerLocked.current) {
         yaw.current -= e.movementX * LOOK_SENSITIVITY;
         pitch.current -= e.movementY * LOOK_SENSITIVITY;
@@ -184,6 +226,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
 
     // Drag to look fallback (when not locked, or touch drag)
     const handlePointerDown = (e: PointerEvent) => {
+      if (useScreensStore.getState().interactiveScreenId) return;
       if (!isPointerLocked.current) {
         isDragging.current = true;
         lastPointerPos.current = { x: e.clientX, y: e.clientY };
@@ -191,6 +234,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     };
 
     const handlePointerMove = (e: PointerEvent) => {
+      if (useScreensStore.getState().interactiveScreenId) return;
       if (isDragging.current && !isPointerLocked.current) {
         const dx = e.clientX - lastPointerPos.current.x;
         const dy = e.clientY - lastPointerPos.current.y;
@@ -229,6 +273,11 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
 
   // Frame update loop for movement and collision
   useFrame((state, rawDelta) => {
+    // If interacting with a screen, pause all walk movements and look rotation
+    if (interactiveScreenId) {
+      return;
+    }
+
     const dt = Math.min(rawDelta, 0.05); // Cap to 50ms to prevent tunneling
 
     // 1. Handle keyboard rotation (Arrow Left / Arrow Right)
@@ -289,26 +338,37 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     // 6. Camera sits 1.65m above feet
     camera.position.set(feetPos.current.x, feetPos.current.y + 1.65, feetPos.current.z);
 
-    // 7. Raycast forward from center screen to detect video screens within 6m
+    // 7. Raycast forward from center screen to detect video or web screens within 6m
     if (state.clock.elapsedTime - lastRaycastTime.current > 0.1) {
       lastRaycastTime.current = state.clock.elapsedTime;
       raycaster.current.setFromCamera(new THREE.Vector2(0, 0), camera);
       const intersects = raycaster.current.intersectObjects(scene.children, true);
-      let hitScreenId: string | null = null;
+      let hitVideoId: string | null = null;
+      let hitWebId: string | null = null;
+
       for (const hit of intersects) {
         if (hit.distance > 6.0) break;
         let obj: THREE.Object3D | null = hit.object;
         while (obj) {
-          if (obj.userData?.isVideoScreen && obj.userData?.screenId) {
-            hitScreenId = obj.userData.screenId as string;
+          if (obj.userData?.screenId) {
+            if (obj.userData?.isWebScreen) {
+              hitWebId = obj.userData.screenId as string;
+            } else if (obj.userData?.isVideoScreen) {
+              hitVideoId = obj.userData.screenId as string;
+            }
             break;
           }
           obj = obj.parent;
         }
-        if (hitScreenId) break;
+        if (hitVideoId || hitWebId) break;
       }
-      if (useScreensStore.getState().focusedVideoScreenId !== hitScreenId) {
-        useScreensStore.getState().setFocusedVideoScreenId(hitScreenId);
+
+      const store = useScreensStore.getState();
+      if (store.focusedVideoScreenId !== hitVideoId) {
+        store.setFocusedVideoScreenId(hitVideoId);
+      }
+      if (store.focusedWebScreenId !== hitWebId) {
+        store.setFocusedWebScreenId(hitWebId);
       }
     }
   });

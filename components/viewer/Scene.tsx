@@ -8,6 +8,7 @@ import { LoadedModelData, ViewerMode } from '@/lib/types';
 import { ModelRoot } from './ModelRoot';
 import { WalkControls } from './WalkControls';
 import { ScreensManager } from './screens/ScreensManager';
+import { useScreensStore } from '@/lib/screensStore';
 
 type OrbitControlsInstance = React.ComponentRef<typeof OrbitControls>;
 
@@ -145,6 +146,7 @@ export const Scene: React.FC<SceneProps> = ({
   orbitTargetRef,
 }) => {
   const isDark = theme === 'dark';
+  const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
   const controlsRef = useRef<OrbitControlsInstance | null>(null);
   const [groundMesh, setGroundMesh] = useState<THREE.Mesh | null>(null);
   const [isGizmoDragging, setIsGizmoDragging] = useState(false);
@@ -221,7 +223,7 @@ export const Scene: React.FC<SceneProps> = ({
         {mode === 'orbit' && (
           <OrbitControls
             ref={controlsRef}
-            enabled={!isGizmoDragging}
+            enabled={!isGizmoDragging && !interactiveScreenId}
             enableDamping
             dampingFactor={0.06}
             maxPolarAngle={Math.PI / 2 - 0.02} // Cannot go below ground
