@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
-import { ScreenData, ScreenAspect, GizmoMode, ScreensLayoutExport, LoadedModelData, VideoRuntimeState } from './types';
+import { ScreenData, ScreenAspect, GizmoMode, ScreensLayoutExport, LoadedModelData, VideoRuntimeState, WebRuntimeState } from './types';
 import { deleteVideo } from './videoStore';
 
 export const ASPECT_RATIOS: Record<Exclude<ScreenAspect, 'custom'>, number> = {
@@ -58,6 +58,9 @@ interface ScreensState {
   adoptedMeshNames: string[];
   videoRuntime: Record<string, VideoRuntimeState>;
   focusedVideoScreenId: string | null;
+  webRuntime: Record<string, WebRuntimeState>;
+  focusedWebScreenId: string | null;
+  interactiveScreenId: string | null;
 
   // Actions
   addScreen: (screen: ScreenData) => void;
@@ -77,6 +80,11 @@ interface ScreensState {
   togglePlayPause: (screenId: string) => void;
   setEligibleScreens: (eligibleScreenIds: string[]) => void;
   setFocusedVideoScreenId: (id: string | null) => void;
+  setWebRuntime: (screenId: string, state: Partial<WebRuntimeState>) => void;
+  setLiveWebScreens: (liveScreenIds: string[]) => void;
+  setFocusedWebScreenId: (id: string | null) => void;
+  setInteractiveScreenId: (id: string | null) => void;
+  reloadWebScreen: (screenId: string) => void;
 }
 
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -199,6 +207,9 @@ export const useScreensStore = create<ScreensState>((set, get) => ({
   adoptedMeshNames: [],
   videoRuntime: {},
   focusedVideoScreenId: null,
+  webRuntime: {},
+  focusedWebScreenId: null,
+  interactiveScreenId: null,
 
   addScreen: (newScreen: ScreenData) => {
     set((state) => {
@@ -265,13 +276,22 @@ export const useScreensStore = create<ScreensState>((set, get) => ({
     set((state) => {
       const updated = state.screens.filter((s) => s.id !== id);
       const nextSelected = state.selectedScreenId === id ? null : state.selectedScreenId;
-      const nextRuntime = { ...state.videoRuntime };
-      delete nextRuntime[id];
+      const nextVideoRuntime = { ...state.videoRuntime };
+      delete nextVideoRuntime[id];
+      const nextWebRuntime = { ...state.webRuntime };
+      delete nextWebRuntime[id];
+      const nextInteractive = state.interactiveScreenId === id ? null : state.interactiveScreenId;
 
       if (state.storageKey) {
         immediateSave(state.storageKey, updated, state.adoptedMeshNames);
       }
-      return { screens: updated, selectedScreenId: nextSelected, videoRuntime: nextRuntime };
+      return {
+        screens: updated,
+        selectedScreenId: nextSelected,
+        videoRuntime: nextVideoRuntime,
+        webRuntime: nextWebRuntime,
+        interactiveScreenId: nextInteractive,
+      };
     });
   },
 
@@ -545,5 +565,88 @@ export const useScreensStore = create<ScreensState>((set, get) => ({
 
   setFocusedVideoScreenId: (id: string | null) => {
     set({ focusedVideoScreenId: id });
+  },
+
+  setWebRuntime: (screenId: string, patch: Partial<WebRuntimeState>) => {
+    set((state) => {
+      const current = state.webRuntime[screenId] || {
+        isLoading: true,
+        isLoaded: false,
+        loadTimeout: false,
+        hasError: false,
+        errorMessage: null,
+        isLive: true,
+        reloadCounter: 0,
+      };
+      return {
+        webRuntime: {
+          ...state.webRuntime,
+          [screenId]: { ...current, ...patch },
+        },
+      };
+    });
+  },
+
+  setLiveWebScreens: (liveScreenIds: string[]) => {
+    const liveSet = new Set(liveScreenIds);
+    set((state) => {
+      let changed = false;
+      const newRuntime = { ...state.webRuntime };
+      for (const screen of state.screens) {
+        if (screen.content.type === 'url') {
+          const isLive = liveSet.has(screen.id);
+          const current = newRuntime[screen.id] || {
+            isLoading: true,
+            isLoaded: false,
+            loadTimeout: false,
+            hasError: false,
+            errorMessage: null,
+            isLive: true,
+            reloadCounter: 0,
+          };
+          if (current.isLive !== isLive) {
+            newRuntime[screen.id] = { ...current, isLive };
+            changed = true;
+          }
+        }
+      }
+      return changed ? { webRuntime: newRuntime } : state;
+    });
+  },
+
+  setFocusedWebScreenId: (id: string | null) => {
+    set({ focusedWebScreenId: id });
+  },
+
+  setInteractiveScreenId: (id: string | null) => {
+    set({ interactiveScreenId: id });
+  },
+
+  reloadWebScreen: (screenId: string) => {
+    set((state) => {
+      const current = state.webRuntime[screenId] || {
+        isLoading: true,
+        isLoaded: false,
+        loadTimeout: false,
+        hasError: false,
+        errorMessage: null,
+        isLive: true,
+        reloadCounter: 0,
+      };
+      return {
+        webRuntime: {
+          ...state.webRuntime,
+          [screenId]: {
+            ...current,
+            isLoading: true,
+            isLoaded: false,
+            loadTimeout: false,
+            hasError: false,
+            errorMessage: null,
+            reloadCounter: current.reloadCounter + 1,
+          },
+        },
+      };
+    });
   },
 }));

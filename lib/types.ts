@@ -71,6 +71,16 @@ export interface VideoRuntimeState {
   isEligibleForPlayback: boolean;
 }
 
+export interface WebRuntimeState {
+  isLoading: boolean;
+  isLoaded: boolean;
+  loadTimeout: boolean;
+  hasError: boolean;
+  errorMessage: string | null;
+  isLive: boolean;
+  reloadCounter: number;
+}
+
 export interface ScreenData {
   id: string;
   name: string;
