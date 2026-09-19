@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
+import { Box } from 'lucide-react';
 import { LoadedModelData, ViewerMode, UnitType, ToastMessage } from '@/lib/types';
 import { loadSampleBoothData, loadModelFiles, disposeHierarchy } from '@/lib/loadModel';
 import { getUnitScale } from '@/lib/units';
@@ -18,12 +19,7 @@ export const ViewerApp: React.FC = () => {
   const [modelData, setModelData] = useState<LoadedModelData | null>(null);
   const [mode, setMode] = useState<ViewerMode>('orbit');
   const [selectedUnit, setSelectedUnit] = useState<UnitType>('auto');
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return 'dark';
-  });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [resetViewTrigger, setResetViewTrigger] = useState(0);
@@ -59,15 +55,17 @@ export const ViewerApp: React.FC = () => {
     };
   }, []);
 
-  // Listen to system theme changes
+  // Auto-collapse sidebar below 1100px width
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent) => {
-      setTheme(e.matches ? 'dark' : 'light');
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      if (window.innerWidth < 1100) {
+        setIsSidebarOpen(false);
+      }
     };
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const addToast = useCallback((type: ToastMessage['type'], message: string, duration = 4000) => {
@@ -122,8 +120,9 @@ export const ViewerApp: React.FC = () => {
     setModelData(sample);
     setSelectedUnit('m');
     setMode('orbit');
+    setIsSidebarOpen(true);
     handleResetView();
-    addToast('success', 'Sample booth loaded successfully');
+    addToast('success', 'Sample booth loaded');
   };
 
   // Open file picker
@@ -133,6 +132,57 @@ export const ViewerApp: React.FC = () => {
       fileInputRef.current.click();
     }
   };
+
+  // Global Keyboard Shortcuts (Ctrl+O, 1 for Orbit, 2 for Walk, R for Reset View in Orbit)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore when typing inside input, textarea, select or contenteditable
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      // Ctrl+O or Cmd+O
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault();
+        handleOpenFile();
+        return;
+      }
+
+      // 1: Orbit mode
+      if (e.key === '1' && modelData) {
+        setMode('orbit');
+        return;
+      }
+
+      // 2: Walk mode
+      if (e.key === '2' && modelData) {
+        setMode('walk');
+        return;
+      }
+
+      // R: Reset View (Orbit mode only)
+      if (
+        (e.key === 'r' || e.key === 'R') &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        modelData &&
+        mode === 'orbit'
+      ) {
+        handleResetView();
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modelData, mode]);
 
   // Drag and drop events on root container
   const handleDragEnter = (e: React.DragEvent) => {
@@ -189,12 +239,10 @@ export const ViewerApp: React.FC = () => {
       setModelData(newModel);
       setSelectedUnit('auto');
       setMode('orbit');
+      setIsSidebarOpen(true);
       handleResetView();
       removeToast(toastId);
-      addToast(
-        'success',
-        `Loaded "${newModel.name}" (${newModel.triangleCount.toLocaleString()} triangles)`
-      );
+      addToast('success', `Loaded "${newModel.name}"`);
     } catch (error: unknown) {
       removeToast(toastId);
       const msg = error instanceof Error ? error.message : 'Failed to load 3D model.';
@@ -202,19 +250,13 @@ export const ViewerApp: React.FC = () => {
     }
   };
 
-  const toggleTheme = () => {
-    setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
-  };
-
-  const isDark = theme === 'dark';
-
   return (
     <main
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`relative w-screen h-screen overflow-hidden select-none ${isDark ? 'dark' : ''}`}
+      className="flex flex-col w-screen h-screen overflow-hidden select-none bg-[var(--bg-app)] text-[var(--text-primary)] font-sans"
     >
       {/* Hidden file input */}
       <input
@@ -235,113 +277,112 @@ export const ViewerApp: React.FC = () => {
         onUnitChange={handleUnitChange}
         onResetView={handleResetView}
         onOpenFile={handleOpenFile}
-        theme={theme}
-        onToggleTheme={toggleTheme}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
 
-      {/* 3D Scene Viewport */}
-      <Scene
-        modelData={modelData}
-        mode={mode}
-        theme={theme}
-        resetViewTrigger={resetViewTrigger}
-        onCameraReady={(cam) => {
-          cameraRef.current = cam;
-        }}
-        orbitTargetRef={orbitTargetRef}
-      />
+      {/* Main Workspace: Flex row containing Canvas & Docked Sidebar */}
+      <div className="flex-1 flex flex-row min-h-0 relative overflow-hidden">
+        {/* 3D Scene Viewport Container: Fills remaining space, overflow-hidden keeps Drei Html inside */}
+        <div className="flex-1 min-w-0 relative h-full overflow-hidden bg-[var(--bg-canvas)]">
+          <Scene
+            modelData={modelData}
+            mode={mode}
+            theme="dark"
+            resetViewTrigger={resetViewTrigger}
+            onCameraReady={(cam) => {
+              cameraRef.current = cam;
+            }}
+            orbitTargetRef={orbitTargetRef}
+          />
 
-      {/* Empty State Card */}
-      {!modelData && (
-        <EmptyState
-          onOpenFile={handleOpenFile}
-          onTrySample={handleTrySample}
-          isDark={isDark}
-        />
-      )}
+          {/* Empty State Card */}
+          {!modelData && (
+            <EmptyState
+              onOpenFile={handleOpenFile}
+              onTrySample={handleTrySample}
+            />
+          )}
 
-      {/* Right-side Screens Management Panel */}
-      {modelData && (
-        <ScreensPanel
-          modelData={modelData}
-          mode={mode}
-          isDark={isDark}
-          onToast={(type, message) => addToast(type, message)}
-          orbitTargetRef={orbitTargetRef}
-          cameraRef={cameraRef}
-        />
-      )}
+          {/* Bottom-left Info Panel */}
+          <InfoPanel modelData={modelData} />
 
-      {/* Bottom-left Info Panel */}
-      <InfoPanel modelData={modelData} isDark={isDark} />
+          {/* Bottom-center Hint Chips */}
+          <HintChips mode={mode} hasModel={modelData !== null} />
 
-      {/* Bottom-center Hint Chips */}
-      <HintChips mode={mode} isDark={isDark} hasModel={modelData !== null} />
+          {/* Toast Notifications (positioned inside canvas container) */}
+          <Toaster toasts={toasts} onDismiss={removeToast} />
 
-      {/* Toast Notifications */}
-      <Toaster toasts={toasts} onDismiss={removeToast} isDark={isDark} />
+          {/* Walk Mode Crosshair Dot (centered on visible canvas) */}
+          {mode === 'walk' && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white rounded-full pointer-events-none ring-1 ring-black/80 z-30" />
+          )}
 
-      {/* Walk Mode Crosshair Dot */}
-      {mode === 'walk' && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white/90 rounded-full pointer-events-none shadow-md ring-1 ring-black/50 z-30" />
-      )}
+          {/* Walk Mode "Press E to play/pause" Floating Prompt */}
+          {mode === 'walk' && focusedVideoScreenId && !interactiveScreenId && (
+            <div className="absolute top-[calc(50%+24px)] left-1/2 -translate-x-1/2 bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium shadow-md pointer-events-none flex items-center gap-1.5 z-40">
+              <kbd className="px-1 py-0.2 bg-[var(--bg-app)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[10px] font-mono font-bold text-[var(--accent-text)]">
+                E
+              </kbd>
+              <span>
+                Press E to {videoRuntime[focusedVideoScreenId]?.isPlaying ? 'pause' : 'play'}
+              </span>
+            </div>
+          )}
 
-      {/* Walk Mode "Press E to play/pause" Floating Prompt */}
-      {mode === 'walk' && focusedVideoScreenId && !interactiveScreenId && (
-        <div className="fixed top-[calc(50%+20px)] left-1/2 -translate-x-1/2 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 text-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium shadow-2xl pointer-events-none flex items-center gap-2 z-40 animate-fade-in">
-          <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-[11px] font-mono font-bold text-amber-400">
-            E
-          </kbd>
-          <span>
-            Press E to {videoRuntime[focusedVideoScreenId]?.isPlaying ? 'pause' : 'play'}
-          </span>
+          {/* Walk Mode "Press E to use this screen" Floating Prompt */}
+          {mode === 'walk' && focusedWebScreenId && !interactiveScreenId && (
+            <div className="absolute top-[calc(50%+24px)] left-1/2 -translate-x-1/2 bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium shadow-md pointer-events-none flex items-center gap-1.5 z-40">
+              <kbd className="px-1 py-0.2 bg-[var(--bg-app)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[10px] font-mono font-bold text-[var(--accent-text)]">
+                E
+              </kbd>
+              <span>Press E to use screen</span>
+            </div>
+          )}
+
+          {/* Interactive Web Screen Floating Header / Exit Button */}
+          {interactiveScreenId && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-default)] px-3 py-1.5 rounded-[var(--radius-sm)] shadow-md select-none">
+              <span className="w-2 h-2 rounded-full bg-[var(--status-success)]" />
+              <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+                Interacting with screen
+              </span>
+              <button
+                type="button"
+                onClick={() => setInteractiveScreenId(null)}
+                className="h-6 px-2 rounded-[var(--radius-sm)] font-medium text-[11px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition cursor-pointer flex items-center gap-1"
+              >
+                <span>Exit screen</span>
+                <span className="text-[10px] opacity-75">(or click canvas)</span>
+              </button>
+            </div>
+          )}
+
+          {/* Drag & Drop "Release to open" Overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-50 bg-[var(--bg-app)]/90 flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--accent)] pointer-events-none">
+              <Box className="w-10 h-10 text-[var(--accent)] mb-3" />
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Release to open</h2>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                Drop .glb or .gltf with .bin &amp; textures
+              </p>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Walk Mode "Press E to use this screen" Floating Prompt */}
-      {mode === 'walk' && focusedWebScreenId && !interactiveScreenId && (
-        <div className="fixed top-[calc(50%+20px)] left-1/2 -translate-x-1/2 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 text-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium shadow-2xl pointer-events-none flex items-center gap-2 z-40 animate-fade-in">
-          <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-[11px] font-mono font-bold text-sky-400">
-            E
-          </kbd>
-          <span>Press E to use this screen</span>
-        </div>
-      )}
-
-      {/* Interactive Web Screen Floating Header / Exit Button */}
-      {interactiveScreenId && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-950/90 backdrop-blur-xl border border-sky-500/50 shadow-2xl px-4 py-2 rounded-2xl animate-fade-in select-none">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold text-slate-200">
-              Interacting with screen
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setInteractiveScreenId(null)}
-            className="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-sky-600 hover:bg-sky-500 text-white shadow-md transition cursor-pointer flex items-center gap-1.5"
-          >
-            <span>Exit screen</span>
-            <span className="text-[10px] text-sky-200 opacity-75">(or click canvas)</span>
-          </button>
-        </div>
-      )}
-
-      {/* Drag & Drop "Release to open" Overlay */}
-      {isDragging && (
-        <div className="absolute inset-0 z-50 bg-sky-950/70 backdrop-blur-md flex flex-col items-center justify-center p-6 border-4 border-dashed border-sky-400 pointer-events-none animate-fadeIn">
-          <div className="w-20 h-20 rounded-3xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-400 mb-4 animate-bounce">
-            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Release to open</h2>
-          <p className="text-sm text-sky-200 mt-1 font-medium">
-            Drop your .glb or .gltf with .bin &amp; textures here
-          </p>
-        </div>
-      )}
+        {/* Docked Right Sidebar: Screens Management & Inspector */}
+        {modelData && (
+          <ScreensPanel
+            modelData={modelData}
+            mode={mode}
+            onToast={(type, message) => addToast(type, message)}
+            orbitTargetRef={orbitTargetRef}
+            cameraRef={cameraRef}
+            isCollapsed={!isSidebarOpen}
+            onToggleCollapse={() => setIsSidebarOpen(false)}
+          />
+        )}
+      </div>
     </main>
   );
 };
