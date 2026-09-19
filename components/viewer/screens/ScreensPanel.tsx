@@ -3,6 +3,29 @@
 import React, { useState, useRef } from 'react';
 import * as THREE from 'three';
 import {
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Crosshair,
+  Copy,
+  Trash2,
+  Move,
+  RotateCw,
+  RefreshCw,
+  Lock,
+  Unlock,
+  ExternalLink,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Upload,
+  Download,
+  Tv,
+  Check,
+  PanelRightClose,
+} from 'lucide-react';
+import {
   ScreenData,
   ScreenAspect,
   LoadedModelData,
@@ -20,15 +43,15 @@ import { saveVideo, validateVideoUrl } from '@/lib/videoStore';
 interface ScreensPanelProps {
   modelData: LoadedModelData | null;
   mode: ViewerMode;
-  isDark: boolean;
   onToast: (type: 'info' | 'success' | 'error', message: string) => void;
   orbitTargetRef?: React.RefObject<THREE.Vector3 | null>;
   cameraRef?: React.RefObject<THREE.Camera | null>;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 interface WebControlsSectionProps {
   screen: ScreenData & { content: { type: 'url'; url: string } };
-  isDark: boolean;
   mode: ViewerMode;
   onToast: (type: 'info' | 'success' | 'error', message: string) => void;
   updateScreen: (id: string, patch: Partial<ScreenData>, persistImmediate?: boolean) => void;
@@ -39,7 +62,6 @@ interface WebControlsSectionProps {
 
 const WebControlsSection: React.FC<WebControlsSectionProps> = ({
   screen,
-  isDark,
   mode,
   onToast,
   updateScreen,
@@ -64,11 +86,13 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
   };
 
   return (
-    <div className="space-y-3 pt-1">
-      {/* URL Input */}
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-semibold text-slate-400">Web App URL</label>
-        <div className="flex gap-1.5">
+    <div className="space-y-2 pt-1">
+      {/* URL Input Row */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-[11px] font-medium text-[var(--text-muted)]">Web Page URL</label>
+        </div>
+        <div className="flex items-center gap-1">
           <input
             type="text"
             placeholder="https://example.com"
@@ -77,14 +101,13 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleApply();
             }}
-            className={`flex-1 px-2.5 py-1.5 rounded-lg border font-mono text-xs ${
-              isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
-            }`}
+            className="flex-1 h-7 px-2 text-[11px] font-mono rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--border-focus)] transition"
           />
           <button
             type="button"
             onClick={handleApply}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition cursor-pointer shrink-0"
+            aria-label="Apply Web Page URL"
+            className="h-7 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition cursor-pointer shrink-0"
           >
             Apply
           </button>
@@ -92,47 +115,36 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
       </div>
 
       {screen.content.url && (
-        <div className="space-y-2.5">
-          {/* URL Summary Card */}
-          <div
-            className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
-              isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100 border-slate-200'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
-              <svg className="w-4 h-4 text-sky-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-              </svg>
-              <span className="font-mono text-[11px] truncate text-slate-300" title={screen.content.url}>
-                {screen.content.url}
-              </span>
-            </div>
+        <div className="space-y-2 pt-1">
+          {/* Active URL row */}
+          <div className="flex items-center justify-between p-1.5 rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] text-[11px]">
+            <span className="font-mono text-[11px] truncate text-[var(--text-secondary)] mr-2" title={screen.content.url}>
+              {screen.content.url}
+            </span>
             <div className="flex items-center gap-1 shrink-0">
               <a
                 href={screen.content.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Open in new browser tab"
-                className="p-1 rounded text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition"
+                aria-label="Open in new browser tab"
+                className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <button
                 type="button"
                 onClick={() => reloadWebScreen(screen.id)}
                 title="Reload screen page"
-                className="p-1 rounded text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Reload screen page"
+                className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition cursor-pointer"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                <RotateCw className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          {/* Action Row: Interact Toggle (in Orbit mode) */}
+          {/* Interact Toggle in Orbit Mode */}
           {mode === 'orbit' && (
             <button
               type="button"
@@ -141,32 +153,28 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
                   interactiveScreenId === screen.id ? null : screen.id
                 )
               }
-              className={`w-full py-2 px-3 rounded-xl font-semibold text-xs border transition flex items-center justify-center gap-2 cursor-pointer ${
+              aria-label={interactiveScreenId === screen.id ? 'Exit Screen Interaction' : 'Interact with Screen'}
+              className={`w-full h-7 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] border transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 interactiveScreenId === screen.id
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 ring-2 ring-amber-500/20'
-                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                  : 'bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border-[var(--border-default)]'
               }`}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-              </svg>
               <span>{interactiveScreenId === screen.id ? 'Exit Interaction' : 'Interact with Screen'}</span>
             </button>
           )}
 
-          {/* Virtual Resolution Configuration */}
-          <div className="pt-2 border-t border-slate-800/80">
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-semibold text-slate-400">Virtual Resolution (px)</label>
-              <span className="text-[10px] text-slate-500 font-mono">Bigger = sharper</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <span className="text-[10px] text-slate-500 block mb-0.5">Width px</span>
+          {/* Virtual Resolution */}
+          <div className="pt-2 border-t border-[var(--border-subtle)] space-y-1.5">
+            <div className="text-[11px] font-medium text-[var(--text-muted)]">Virtual Resolution</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="flex items-center rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] px-2 h-7">
+                <span className="text-[10px] text-[var(--text-muted)] mr-1">W</span>
                 <input
                   type="number"
                   min={320}
                   max={7680}
+                  aria-label="Virtual Width in pixels"
                   value={screen.pixelWidth || 1920}
                   onChange={(e) => {
                     const val = parseInt(e.target.value, 10);
@@ -174,17 +182,17 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
                       updateScreen(screen.id, { pixelWidth: val });
                     }
                   }}
-                  className={`w-full px-2 py-1 rounded-lg border font-mono text-xs ${
-                    isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
-                  }`}
+                  className="w-full bg-transparent font-mono text-[11px] text-[var(--text-primary)] outline-none"
                 />
+                <span className="text-[10px] text-[var(--text-muted)]">px</span>
               </div>
-              <div>
-                <span className="text-[10px] text-slate-500 block mb-0.5">Height px</span>
+              <div className="flex items-center rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] px-2 h-7">
+                <span className="text-[10px] text-[var(--text-muted)] mr-1">H</span>
                 <input
                   type="number"
                   min={240}
                   max={4320}
+                  aria-label="Virtual Height in pixels"
                   value={screen.pixelHeight || 1080}
                   onChange={(e) => {
                     const val = parseInt(e.target.value, 10);
@@ -192,16 +200,14 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
                       updateScreen(screen.id, { pixelHeight: val });
                     }
                   }}
-                  className={`w-full px-2 py-1 rounded-lg border font-mono text-xs ${
-                    isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
-                  }`}
+                  className="w-full bg-transparent font-mono text-[11px] text-[var(--text-primary)] outline-none"
                 />
+                <span className="text-[10px] text-[var(--text-muted)]">px</span>
               </div>
             </div>
           </div>
 
-          {/* Framing Information Note */}
-          <p className="text-[10px] text-slate-400 italic bg-slate-900/40 p-2 rounded-lg border border-slate-800">
+          <p className="text-[10px] text-[var(--text-muted)] leading-relaxed pt-0.5">
             Pages that block embedding will appear blank. Your own apps work when they allow framing.
           </p>
         </div>
@@ -213,16 +219,23 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
 export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   modelData,
   mode,
-  isDark,
   onToast,
   orbitTargetRef,
   cameraRef,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
   const [videoUrlInput, setVideoUrlInput] = useState('');
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
+  // Collapsible section states
+  const [sectionScreensOpen, setSectionScreensOpen] = useState(true);
+  const [sectionTransformOpen, setSectionTransformOpen] = useState(true);
+  const [sectionContentOpen, setSectionContentOpen] = useState(true);
+  const [sectionFoundOpen, setSectionFoundOpen] = useState(true);
+
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -252,16 +265,14 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   const togglePlayPause = useScreensStore((s) => s.togglePlayPause);
   const setVideoRuntime = useScreensStore((s) => s.setVideoRuntime);
 
-  if (!modelData) return null;
+  if (!modelData || isCollapsed) return null;
 
   const selectedScreen = screens.find((s) => s.id === selectedScreenId) || null;
 
-  // Unadopted tagged meshes from model
   const unadoptedTaggedScreens = modelData.screens.filter(
     (s) => !adoptedMeshNames.includes(s.name)
   );
 
-  // Handle "Add Screen"
   const handleAddScreen = () => {
     if (!cameraRef?.current) {
       onToast('error', 'Camera not ready to calculate screen placement.');
@@ -298,7 +309,6 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
     onToast('success', `Created "${newScreen.name}" (3.20 × 1.80 m)`);
   };
 
-  // Dimension & Aspect changes
   const handleWidthChange = (valStr: string) => {
     if (!selectedScreen) return;
     const val = parseFloat(valStr);
@@ -354,7 +364,6 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
     }, true);
   };
 
-  // Convert quaternion to Euler degrees for display
   const eulerDeg = selectedScreen
     ? (() => {
         const q = new THREE.Quaternion(...selectedScreen.quaternion);
@@ -367,14 +376,12 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
       })()
     : { x: 0, y: 0, z: 0 };
 
-  // Calculate diagonal in inches
   const diagonalInches = selectedScreen
     ? (Math.hypot(selectedScreen.width, selectedScreen.height) / 0.0254).toFixed(1)
     : '0';
 
   const activeVideoRuntime = selectedScreen ? videoRuntime[selectedScreen.id] : undefined;
 
-  // Content Handlers
   const handleContentTypeChange = (type: 'none' | 'video' | 'url') => {
     if (!selectedScreen) return;
     if (type === 'none') {
@@ -418,7 +425,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
     if (!file || !selectedScreen) return;
 
     if (file.size > 200 * 1024 * 1024) {
-      onToast('info', 'Warning: Video file is over 200 MB. Large files may impact performance or memory.');
+      onToast('info', 'Warning: Video file is over 200 MB.');
     }
 
     setIsUploadingVideo(true);
@@ -510,9 +517,6 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
       },
       true
     );
-    if (!newMuted) {
-      onToast('info', 'Audio unmuted');
-    }
   };
 
   const handleRemoveVideo = () => {
@@ -524,10 +528,8 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
       },
       true
     );
-    onToast('info', 'Video removed');
   };
 
-  // Export JSON
   const handleExport = () => {
     try {
       const json = exportLayout();
@@ -544,7 +546,6 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
     }
   };
 
-  // Import JSON
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -556,7 +557,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
       if (res.success) {
         onToast('success', 'Layout imported successfully');
       } else {
-        onToast('error', res.error || 'Failed to import layout: validation failed.');
+        onToast('error', res.error || 'Failed to import layout.');
       }
     };
     reader.onerror = () => {
@@ -567,7 +568,10 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   };
 
   return (
-    <aside className="absolute top-20 right-4 z-20 max-w-sm w-full select-none pointer-events-auto">
+    <aside
+      aria-label="Screens & Display Inspector"
+      className="w-[300px] h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)] text-[var(--text-primary)] select-none shrink-0 z-20 overflow-hidden"
+    >
       <input
         ref={importFileInputRef}
         type="file"
@@ -576,139 +580,121 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
         className="hidden"
       />
 
-      <div
-        className={`rounded-2xl border backdrop-blur-xl shadow-2xl transition-all duration-200 overflow-hidden flex flex-col ${
-          isDark
-            ? 'bg-slate-950/85 border-slate-800 text-slate-100 shadow-black/60'
-            : 'bg-white/90 border-slate-200 text-slate-900 shadow-slate-300/60'
-        } ${isCollapsed ? 'max-h-14' : 'max-h-[85vh]'}`}
-      >
-        {/* Panel Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-inherit shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-md bg-sky-500/20 text-sky-400 flex items-center justify-center">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider">Display Screens</h2>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-400 font-bold">
-              {screens.length}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Editing / Presentation Mode Toggle */}
-            <button
-              type="button"
-              onClick={() => setEditing(!isEditing)}
-              title={isEditing ? 'Presentation mode (Hide gizmos & outlines)' : 'Editing mode (Show gizmos & outlines)'}
-              className={`px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 transition cursor-pointer border ${
-                isEditing
-                  ? 'bg-sky-500/15 text-sky-400 border-sky-500/30 hover:bg-sky-500/25'
-                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-              }`}
-            >
-              {isEditing ? (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-                  <span>Edit</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <span>View</span>
-                </>
-              )}
-            </button>
-
-            {/* Collapse toggle */}
-            <button
-              type="button"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-200 transition cursor-pointer"
-            >
-              <svg
-                className={`w-4 h-4 transform transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
+      {/* Sidebar Header */}
+      <div className="h-10 px-3 flex items-center justify-between border-b border-[var(--border-default)] shrink-0 bg-[var(--bg-surface)]">
+        <div className="flex items-center gap-1.5 font-medium text-[12px]">
+          <Tv className="w-3.5 h-3.5 text-[var(--accent)]" />
+          <span>Screens</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] text-[11px] font-mono text-[var(--text-muted)]">
+            {screens.length}
+          </span>
         </div>
 
-        {/* Panel Content */}
-        {!isCollapsed && (
-          <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(85vh-3.5rem)] text-xs">
-            {/* Top Action Buttons: Add Screen & Place on surface */}
-            <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {/* View / Edit Mode Toggle */}
+          <button
+            type="button"
+            onClick={() => setEditing(!isEditing)}
+            title={isEditing ? 'Presentation mode (Hide gizmos)' : 'Editing mode (Show gizmos)'}
+            aria-label={isEditing ? 'Switch to presentation view' : 'Switch to edit mode'}
+            className={`px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium border transition cursor-pointer ${
+              isEditing
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            {isEditing ? 'Edit' : 'View'}
+          </button>
+
+          {/* Close Sidebar Toggle */}
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label="Collapse inspector sidebar"
+              title="Collapse inspector sidebar"
+              className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition cursor-pointer"
+            >
+              <PanelRightClose className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Sidebar Body */}
+      <div className="flex-1 overflow-y-auto divide-y divide-[var(--border-subtle)] text-[12px]">
+        {/* SECTION 1: SCREENS LIST & CREATION */}
+        <section className="p-3 space-y-2">
+          {/* Header & Collapse Toggle */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setSectionScreensOpen(!sectionScreensOpen)}
+              className="flex items-center gap-1 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider hover:text-[var(--text-primary)] transition"
+            >
+              {sectionScreensOpen ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+              <span>Screen List</span>
+            </button>
+
+            {/* Top Action Buttons */}
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={handleAddScreen}
-                className="flex-1 py-2 px-3 rounded-xl font-semibold text-white bg-sky-600 hover:bg-sky-500 active:bg-sky-700 transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                aria-label="Add new screen"
+                title="Add new screen"
+                className="h-6 px-2 rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-[11px] font-medium flex items-center gap-1 transition cursor-pointer"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Add screen</span>
+                <Plus className="w-3 h-3" />
+                <span>Add</span>
               </button>
 
               {selectedScreen && (
                 <button
                   type="button"
                   onClick={() => setPlacingOnSurface(!isPlacingOnSurface)}
-                  title="Click any spot on the model to snap the selected screen there"
-                  className={`py-2 px-3 rounded-xl font-medium border transition flex items-center gap-1.5 cursor-pointer ${
+                  title="Click any spot on the model to place screen"
+                  aria-label="Place screen on surface"
+                  className={`h-6 px-2 rounded-[var(--radius-sm)] text-[11px] font-medium border transition flex items-center gap-1 cursor-pointer ${
                     isPlacingOnSurface
-                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-400 ring-2 ring-amber-500/30 animate-pulse'
-                      : isDark
-                      ? 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
-                      : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
+                      ? 'bg-[var(--status-warning)] text-black border-[var(--status-warning)]'
+                      : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>{isPlacingOnSurface ? 'Click surface...' : 'Place'}</span>
+                  <Crosshair className="w-3 h-3" />
+                  <span>{isPlacingOnSurface ? 'Placing...' : 'Place'}</span>
                 </button>
               )}
             </div>
+          </div>
 
-            {/* Screens List */}
-            {screens.length > 0 ? (
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Configured Screens ({screens.length})
-                </div>
-                <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+          {sectionScreensOpen && (
+            <div className="space-y-1">
+              {screens.length > 0 ? (
+                <div className="space-y-0.5 max-h-44 overflow-y-auto pr-0.5">
                   {screens.map((screen) => {
                     const isSelected = screen.id === selectedScreenId;
                     return (
                       <div
                         key={screen.id}
                         onClick={() => selectScreen(screen.id)}
-                        className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer ${
+                        className={`flex items-center justify-between px-2 py-1.5 rounded-[var(--radius-sm)] border transition cursor-pointer ${
                           isSelected
-                            ? 'bg-sky-500/15 border-sky-500/40 text-sky-200 font-medium'
-                            : isDark
-                            ? 'bg-slate-900/60 border-slate-800/60 hover:bg-slate-800/50 text-slate-300'
-                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-800'
+                            ? 'bg-[var(--accent-subtle)] border-[var(--accent)] text-[var(--accent-text)] font-medium'
+                            : 'bg-transparent border-transparent hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                         }`}
                       >
-                        <div className="flex items-center gap-2 overflow-hidden flex-1 mr-2">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-sky-400' : 'bg-slate-600'}`} />
+                        <div className="flex items-center gap-1.5 overflow-hidden flex-1 mr-1">
                           {editingNameId === screen.id ? (
                             <input
                               type="text"
                               autoFocus
                               value={tempName}
+                              aria-label="Rename screen"
                               onChange={(e) => setTempName(e.target.value)}
                               onBlur={() => {
                                 if (tempName.trim()) {
@@ -726,11 +712,11 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                                   setEditingNameId(null);
                                 }
                               }}
-                              className="px-1.5 py-0.5 rounded text-xs bg-slate-950 border border-sky-500 text-white w-full outline-none"
+                              className="px-1 h-5 rounded-[var(--radius-sm)] text-[11px] bg-[var(--bg-app)] border border-[var(--border-focus)] text-white w-full outline-none font-sans"
                             />
                           ) : (
                             <span
-                              className="truncate font-semibold cursor-text"
+                              className="truncate text-[12px] cursor-text"
                               onDoubleClick={() => {
                                 setEditingNameId(screen.id);
                                 setTempName(screen.name);
@@ -740,161 +726,175 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                               {screen.name}
                             </span>
                           )}
-                          <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                          <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
                             {screen.width}×{screen.height}m
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => duplicateScreen(screen.id)}
                             title="Duplicate screen"
-                            className="p-1 rounded hover:text-sky-400 text-slate-400 transition cursor-pointer"
+                            aria-label="Duplicate screen"
+                            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-active)] transition cursor-pointer"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
+                            <Copy className="w-3 h-3" />
                           </button>
                           <button
                             type="button"
                             onClick={() => deleteScreen(screen.id)}
                             title="Delete screen"
-                            className="p-1 rounded hover:text-rose-400 text-slate-400 transition cursor-pointer"
+                            aria-label="Delete screen"
+                            className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--status-error)] hover:bg-[var(--bg-surface-active)] transition cursor-pointer"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            ) : (
-              <div
-                className={`p-3 rounded-xl border text-center ${
-                  isDark ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-                }`}
-              >
-                No screens configured yet. Click <strong>Add screen</strong> or adopt one from the model below.
-              </div>
-            )}
+              ) : (
+                <p className="text-[11px] text-[var(--text-muted)] py-2">
+                  No screens created. Click Add to create one.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
 
-            {/* Selected Screen Inspector Details */}
-            {selectedScreen && (
-              <div className="pt-3 border-t border-inherit space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-sky-400 text-xs flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                    <span>Screen Inspector</span>
-                  </div>
+        {/* SECTION 2: TRANSFORM INSPECTOR */}
+        {selectedScreen && (
+          <section className="p-3 space-y-2.5">
+            <button
+              type="button"
+              onClick={() => setSectionTransformOpen(!sectionTransformOpen)}
+              className="w-full flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider hover:text-[var(--text-primary)] transition"
+            >
+              <div className="flex items-center gap-1">
+                {sectionTransformOpen ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )}
+                <span>Transform</span>
+              </div>
+            </button>
 
-                  {/* Gizmo Controls: Move / Rotate / Flip */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setGizmoMode('translate')}
-                      title="Move (G/W)"
-                      className={`p-1 rounded-md text-[11px] font-medium border transition cursor-pointer ${
-                        gizmoMode === 'translate'
-                          ? 'bg-sky-600 text-white border-sky-500'
-                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                      }`}
-                    >
-                      Move
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setGizmoMode('rotate')}
-                      title="Rotate (R)"
-                      className={`p-1 rounded-md text-[11px] font-medium border transition cursor-pointer ${
-                        gizmoMode === 'rotate'
-                          ? 'bg-sky-600 text-white border-sky-500'
-                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                      }`}
-                    >
-                      Rotate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => flipFacing(selectedScreen.id)}
-                      title="Flip facing (Rotate 180°)"
-                      className="p-1 rounded-md text-[11px] font-medium border bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 transition cursor-pointer"
-                    >
-                      Flip 180°
-                    </button>
-                  </div>
+            {sectionTransformOpen && (
+              <div className="space-y-2 pt-0.5">
+                {/* Gizmo Mode Buttons */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setGizmoMode('translate')}
+                    aria-label="Move Gizmo"
+                    title="Move Gizmo"
+                    className={`flex-1 h-6 text-[11px] font-medium rounded-[var(--radius-sm)] border transition flex items-center justify-center gap-1 cursor-pointer ${
+                      gizmoMode === 'translate'
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                        : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <Move className="w-3 h-3" />
+                    <span>Move</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGizmoMode('rotate')}
+                    aria-label="Rotate Gizmo"
+                    title="Rotate Gizmo"
+                    className={`flex-1 h-6 text-[11px] font-medium rounded-[var(--radius-sm)] border transition flex items-center justify-center gap-1 cursor-pointer ${
+                      gizmoMode === 'rotate'
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                        : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <RotateCw className="w-3 h-3" />
+                    <span>Rotate</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => flipFacing(selectedScreen.id)}
+                    aria-label="Flip facing 180 degrees"
+                    title="Flip facing 180°"
+                    className="h-6 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>180°</span>
+                  </button>
                 </div>
 
-                {/* Dimensions (Width / Height) */}
-                <div className="space-y-1.5">
+                {/* Dimensions: Width & Height Property Rows */}
+                <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Dimensions (Meters):</span>
+                    <span className="text-[11px] text-[var(--text-muted)]">Dimensions</span>
                     <button
                       type="button"
                       onClick={() =>
                         updateScreen(selectedScreen.id, { isAspectLocked: !selectedScreen.isAspectLocked }, true)
                       }
                       title={selectedScreen.isAspectLocked ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
-                      className={`flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded cursor-pointer transition ${
+                      aria-label={selectedScreen.isAspectLocked ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
+                      className={`p-1 rounded-[var(--radius-sm)] transition cursor-pointer ${
                         selectedScreen.isAspectLocked
-                          ? 'bg-sky-500/20 text-sky-400'
-                          : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+                          ? 'text-[var(--accent-text)] bg-[var(--accent-subtle)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                       }`}
                     >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        {selectedScreen.isAspectLocked ? (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        ) : (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                        )}
-                      </svg>
-                      <span>{selectedScreen.isAspectLocked ? 'Locked' : 'Unlocked'}</span>
+                      {selectedScreen.isAspectLocked ? (
+                        <Lock className="w-3 h-3" />
+                      ) : (
+                        <Unlock className="w-3 h-3" />
+                      )}
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] text-slate-400 font-semibold block mb-0.5">WIDTH (m)</label>
+                  {/* Width Row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor="screen-width-input" className="text-[11px] text-[var(--text-muted)] w-14 shrink-0">Width</label>
+                    <div className="flex-1 flex items-center h-6 px-2 rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)]">
                       <input
+                        id="screen-width-input"
                         type="number"
                         step="0.05"
                         min="0.1"
                         value={selectedScreen.width}
                         onChange={(e) => handleWidthChange(e.target.value)}
-                        className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs ${
-                          isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
-                        }`}
+                        className="w-full bg-transparent font-mono text-[11px] text-[var(--text-primary)] outline-none"
                       />
+                      <span className="text-[10px] text-[var(--text-muted)] shrink-0">m</span>
                     </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400 font-semibold block mb-0.5">HEIGHT (m)</label>
+                  </div>
+
+                  {/* Height Row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor="screen-height-input" className="text-[11px] text-[var(--text-muted)] w-14 shrink-0">Height</label>
+                    <div className="flex-1 flex items-center h-6 px-2 rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)]">
                       <input
+                        id="screen-height-input"
                         type="number"
                         step="0.05"
                         min="0.1"
                         value={selectedScreen.height}
                         onChange={(e) => handleHeightChange(e.target.value)}
-                        className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs ${
-                          isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
-                        }`}
+                        className="w-full bg-transparent font-mono text-[11px] text-[var(--text-primary)] outline-none"
                       />
+                      <span className="text-[10px] text-[var(--text-muted)] shrink-0">m</span>
                     </div>
                   </div>
-                </div>
 
-                {/* Aspect Ratio Presets & Diagonal */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-slate-400">Aspect Preset:</label>
+                  {/* Aspect Ratio Selector Row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor="screen-aspect-select" className="text-[11px] text-[var(--text-muted)] w-14 shrink-0">Aspect</label>
                     <select
+                      id="screen-aspect-select"
                       value={selectedScreen.aspect}
                       onChange={(e) => handleAspectPresetChange(e.target.value as ScreenAspect)}
-                      className={`text-xs rounded-md px-2 py-1 border font-medium cursor-pointer ${
-                        isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
-                      }`}
+                      className="flex-1 h-6 px-1.5 text-[11px] font-mono rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer"
                     >
                       <option value="16:9">16:9 (Standard)</option>
                       <option value="21:9">21:9 (Ultrawide)</option>
@@ -905,377 +905,359 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                     </select>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] p-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-300">
-                    <span>Diagonal size:</span>
-                    <strong className="font-mono">{diagonalInches}&quot; ({(Math.hypot(selectedScreen.width, selectedScreen.height)).toFixed(2)} m)</strong>
+                  {/* Diagonal Size Row */}
+                  <div className="flex items-center justify-between text-[11px] pt-1">
+                    <span className="text-[var(--text-muted)]">Diagonal</span>
+                    <span className="font-mono text-[var(--text-secondary)]">
+                      {diagonalInches}&quot; ({Math.hypot(selectedScreen.width, selectedScreen.height).toFixed(2)} m)
+                    </span>
                   </div>
                 </div>
 
-                {/* Position & Rotation Info */}
-                <div className="pt-2 border-t border-inherit space-y-1.5 text-[11px] text-slate-400">
+                {/* Coordinates & Angles */}
+                <div className="pt-2 border-t border-[var(--border-subtle)] space-y-1 text-[11px]">
                   <div className="flex items-center justify-between">
-                    <span>Native Pos (X, Y, Z):</span>
-                    <span className="font-mono text-slate-200">
-                      {selectedScreen.position[0].toFixed(2)}, {selectedScreen.position[1].toFixed(2)}, {selectedScreen.position[2].toFixed(2)}
+                    <span className="text-[var(--text-muted)]">Position</span>
+                    <span className="font-mono text-[10px] text-[var(--text-secondary)]">
+                      {selectedScreen.position[0].toFixed(2)}m, {selectedScreen.position[1].toFixed(2)}m, {selectedScreen.position[2].toFixed(2)}m
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Rotation (Yaw, Pitch, Roll):</span>
-                    <span className="font-mono text-slate-200">
+                    <span className="text-[var(--text-muted)]">Rotation</span>
+                    <span className="font-mono text-[10px] text-[var(--text-secondary)]">
                       {eulerDeg.y}°, {eulerDeg.x}°, {eulerDeg.z}°
                     </span>
                   </div>
                 </div>
+              </div>
+            )}
+          </section>
+        )}
 
-                {/* Screen Content Section */}
-                <div className="pt-3 border-t border-inherit space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="font-semibold text-sky-400 text-xs flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                      <span>Screen Content</span>
-                    </div>
-                  </div>
+        {/* SECTION 3: CONTENT INSPECTOR */}
+        {selectedScreen && (
+          <section className="p-3 space-y-2">
+            <button
+              type="button"
+              onClick={() => setSectionContentOpen(!sectionContentOpen)}
+              className="w-full flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider hover:text-[var(--text-primary)] transition"
+            >
+              <div className="flex items-center gap-1">
+                {sectionContentOpen ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )}
+                <span>Content</span>
+              </div>
+            </button>
 
-                  {/* Content Type Selector */}
-                  <div className="grid grid-cols-3 gap-1.5 text-xs font-medium">
-                    <button
-                      type="button"
-                      onClick={() => handleContentTypeChange('none')}
-                      className={`py-1.5 rounded-lg border transition cursor-pointer ${
-                        selectedScreen.content.type === 'none'
-                          ? 'bg-sky-600 text-white border-sky-500 font-semibold'
-                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                      }`}
-                    >
-                      None
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleContentTypeChange('video')}
-                      className={`py-1.5 rounded-lg border transition cursor-pointer ${
-                        selectedScreen.content.type === 'video'
-                          ? 'bg-sky-600 text-white border-sky-500 font-semibold'
-                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                      }`}
-                    >
-                      Video
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleContentTypeChange('url')}
-                      className={`py-1.5 rounded-lg border transition cursor-pointer ${
-                        selectedScreen.content.type === 'url'
-                          ? 'bg-sky-600 text-white border-sky-500 font-semibold'
-                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                      }`}
-                    >
-                      Web page
-                    </button>
-                  </div>
+            {sectionContentOpen && (
+              <div className="space-y-2 pt-0.5">
+                {/* Content Type Segmented Control */}
+                <div
+                  role="group"
+                  aria-label="Screen Content Type"
+                  className="grid grid-cols-3 gap-1 p-0.5 rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleContentTypeChange('none')}
+                    aria-pressed={selectedScreen.content.type === 'none'}
+                    className={`h-6 text-[11px] font-medium rounded-[var(--radius-sm)] transition cursor-pointer ${
+                      selectedScreen.content.type === 'none'
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    None
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleContentTypeChange('video')}
+                    aria-pressed={selectedScreen.content.type === 'video'}
+                    className={`h-6 text-[11px] font-medium rounded-[var(--radius-sm)] transition cursor-pointer ${
+                      selectedScreen.content.type === 'video'
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    Video
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleContentTypeChange('url')}
+                    aria-pressed={selectedScreen.content.type === 'url'}
+                    className={`h-6 text-[11px] font-medium rounded-[var(--radius-sm)] transition cursor-pointer ${
+                      selectedScreen.content.type === 'url'
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    Web page
+                  </button>
+                </div>
 
-                  {/* Video Configuration & Controls */}
-                  {selectedScreen.content.type === 'video' && (
-                    <div className="space-y-3 pt-1">
-                      {/* Hidden File Input */}
-                      <input
-                        ref={videoFileInputRef}
-                        type="file"
-                        accept=".mp4,.webm,video/mp4,video/webm"
-                        className="hidden"
-                        onChange={handleVideoFileUpload}
-                      />
+                {/* Video Controls */}
+                {selectedScreen.content.type === 'video' && (
+                  <div className="space-y-2 pt-1">
+                    <input
+                      ref={videoFileInputRef}
+                      type="file"
+                      accept=".mp4,.webm,video/mp4,video/webm"
+                      className="hidden"
+                      onChange={handleVideoFileUpload}
+                    />
 
-                      {/* If No Video Attached: Show Upload & URL Inputs */}
-                      {(selectedScreen.content.source === 'file' && !selectedScreen.content.videoId) ||
-                      (selectedScreen.content.source === 'url' && !selectedScreen.content.src) ? (
-                        <div className="space-y-2">
-                          {/* Upload Button */}
+                    {(selectedScreen.content.source === 'file' && !selectedScreen.content.videoId) ||
+                    (selectedScreen.content.source === 'url' && !selectedScreen.content.src) ? (
+                      <div className="space-y-1.5">
+                        <button
+                          type="button"
+                          disabled={isUploadingVideo}
+                          onClick={() => videoFileInputRef.current?.click()}
+                          className="w-full h-8 px-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--border-default)] hover:border-[var(--border-hover)] bg-[var(--bg-app)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{isUploadingVideo ? 'Uploading...' : 'Upload video file'}</span>
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            placeholder="https://.../video.mp4"
+                            value={videoUrlInput}
+                            onChange={(e) => setVideoUrlInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleApplyVideoUrl();
+                            }}
+                            className="flex-1 h-7 px-2 text-[11px] font-mono rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] text-[var(--text-primary)] outline-none"
+                          />
                           <button
                             type="button"
-                            disabled={isUploadingVideo}
-                            onClick={() => videoFileInputRef.current?.click()}
-                            className="w-full py-2.5 px-3 rounded-xl border border-dashed border-sky-500/50 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/15 text-sky-300 font-medium text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                            onClick={handleApplyVideoUrl}
+                            className="h-7 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition cursor-pointer shrink-0"
                           >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
-                            <span>{isUploadingVideo ? 'Storing video...' : 'Upload video file (.mp4, .webm)'}</span>
+                            Apply
                           </button>
-
-                          <div className="text-[10px] text-center text-slate-500 font-medium uppercase tracking-wider">
-                            — OR PASTE DIRECT VIDEO LINK —
-                          </div>
-
-                          {/* URL Input */}
-                          <div className="flex gap-1.5">
-                            <input
-                              type="text"
-                              placeholder="https://.../video.mp4"
-                              value={videoUrlInput}
-                              onChange={(e) => setVideoUrlInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleApplyVideoUrl();
-                              }}
-                              className={`flex-1 px-2.5 py-1.5 rounded-lg border font-mono text-xs ${
-                                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
-                              }`}
-                            />
-                            <button
-                              type="button"
-                              onClick={handleApplyVideoUrl}
-                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition cursor-pointer shrink-0"
-                            >
-                              Apply
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* Video is loaded: Show Media details, Playback bar, Fit, Loop, Sound */
-                        <div className="space-y-2.5">
-                          {/* File Name / URL Summary Card */}
-                          <div
-                            className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
-                              isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100 border-slate-200'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
-                              <svg className="w-4 h-4 text-sky-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                              <span
-                                className="truncate font-mono text-[11px] text-slate-200"
-                                title={selectedScreen.content.source === 'file' ? selectedScreen.content.fileName : selectedScreen.content.src}
-                              >
-                                {selectedScreen.content.source === 'file' ? selectedScreen.content.fileName : selectedScreen.content.src}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => videoFileInputRef.current?.click()}
-                                title="Replace with another file"
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
-                              >
-                                Replace
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleRemoveVideo}
-                                title="Remove video"
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 transition cursor-pointer"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Runtime Error Display */}
-                          {activeVideoRuntime?.error && (
-                            <div className="p-2 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs space-y-1">
-                              <div className="font-semibold flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5 text-rose-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <span>Video Error</span>
-                              </div>
-                              <p className="text-[11px] leading-relaxed text-rose-200/90">{activeVideoRuntime.error}</p>
-                            </div>
-                          )}
-
-                          {/* Play/Pause Control Bar */}
-                          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/80 border border-slate-800">
-                            <button
-                              type="button"
-                              onClick={() => togglePlayPause(selectedScreen.id)}
-                              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                                activeVideoRuntime?.isPlaying
-                                  ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                              }`}
-                            >
-                              {activeVideoRuntime?.isPlaying ? (
-                                <>
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                                  </svg>
-                                  <span>Pause</span>
-                                </>
-                              ) : (
-                                <>
-                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M8 5v14l11-7z" />
-                                  </svg>
-                                  <span>Play</span>
-                                </>
-                              )}
-                            </button>
-
-                            <span className="text-[11px] font-mono text-slate-400">
-                              {activeVideoRuntime?.isLoading
-                                ? 'Loading...'
-                                : activeVideoRuntime?.isPlaying
-                                ? 'Playing'
-                                : 'Paused'}
-                            </span>
-                          </div>
-
-                          {/* Fit, Sound & Loop Controls */}
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            {/* Fit mode */}
-                            <div>
-                              <label className="text-[10px] text-slate-400 font-semibold block mb-1">FIT</label>
-                              <div className="grid grid-cols-2 gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleFitChange('contain')}
-                                  className={`py-1 text-[10px] rounded-md font-medium border transition cursor-pointer text-center ${
-                                    selectedScreen.content.fit === 'contain'
-                                      ? 'bg-sky-600 text-white border-sky-500'
-                                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                                  }`}
-                                  title="Contain video with letterbox bars"
-                                >
-                                  Contain
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleFitChange('cover')}
-                                  className={`py-1 text-[10px] rounded-md font-medium border transition cursor-pointer text-center ${
-                                    selectedScreen.content.fit === 'cover'
-                                      ? 'bg-sky-600 text-white border-sky-500'
-                                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                                  }`}
-                                  title="Fill screen (crops edges)"
-                                >
-                                  Cover
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Loop Toggle */}
-                            <div>
-                              <label className="text-[10px] text-slate-400 font-semibold block mb-1">LOOP</label>
-                              <button
-                                type="button"
-                                onClick={handleToggleLoop}
-                                className={`w-full py-1 text-[11px] rounded-md font-medium border transition cursor-pointer ${
-                                  selectedScreen.content.loop
-                                    ? 'bg-sky-600 text-white border-sky-500'
-                                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                                }`}
-                              >
-                                {selectedScreen.content.loop ? 'On' : 'Off'}
-                              </button>
-                            </div>
-
-                            {/* Sound Toggle */}
-                            <div>
-                              <label className="text-[10px] text-slate-400 font-semibold block mb-1">SOUND</label>
-                              <button
-                                type="button"
-                                onClick={handleToggleSound}
-                                className={`w-full py-1 text-[11px] rounded-md font-medium border transition cursor-pointer ${
-                                  !selectedScreen.content.muted
-                                    ? 'bg-emerald-600 text-white border-emerald-500'
-                                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                                }`}
-                                title={selectedScreen.content.muted ? 'Click to unmute' : 'Click to mute'}
-                              >
-                                {selectedScreen.content.muted ? 'Muted' : 'Sound On'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Web Page Configuration & Controls */}
-                  {selectedScreen.content.type === 'url' && (
-                    <WebControlsSection
-                      key={`${selectedScreen.id}-${selectedScreen.content.url}`}
-                      screen={selectedScreen as ScreenData & { content: { type: 'url'; url: string } }}
-                      isDark={isDark}
-                      mode={mode}
-                      onToast={onToast}
-                      updateScreen={updateScreen}
-                      reloadWebScreen={reloadWebScreen}
-                      interactiveScreenId={interactiveScreenId}
-                      setInteractiveScreenId={setInteractiveScreenId}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Found in Model (Adopt tagged SCREEN_* meshes) */}
-            {unadoptedTaggedScreens.length > 0 && (
-              <div className="pt-3 border-t border-inherit space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Found in Model ({unadoptedTaggedScreens.length})
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">Phase 1 Target</span>
-                </div>
-
-                <div className="space-y-1.5">
-                  {unadoptedTaggedScreens.map((s) => (
-                    <div
-                      key={s.name}
-                      className={`p-2 rounded-xl border flex items-center justify-between ${
-                        isDark ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200' : 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                      }`}
-                    >
-                      <div className="overflow-hidden mr-2">
-                        <div className="font-semibold truncate">{s.name}</div>
-                        <div className="text-[10px] opacity-75 font-mono">
-                          {s.width} × {s.height} m ({s.aspectRatio})
                         </div>
                       </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {/* Video summary row */}
+                        <div className="flex items-center justify-between p-1.5 rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] text-[11px]">
+                          <span
+                            className="truncate font-mono text-[11px] text-[var(--text-secondary)] mr-2"
+                            title={selectedScreen.content.source === 'file' ? selectedScreen.content.fileName : selectedScreen.content.src}
+                          >
+                            {selectedScreen.content.source === 'file' ? selectedScreen.content.fileName : selectedScreen.content.src}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => videoFileInputRef.current?.click()}
+                              className="px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[10px] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                            >
+                              Replace
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRemoveVideo}
+                              className="px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[10px] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] text-[var(--status-error)] transition cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
 
-                      <button
-                        type="button"
-                        onClick={() => adoptTaggedScreen(s.name, modelData)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 transition shadow-sm shrink-0 cursor-pointer"
-                      >
-                        Use as screen
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                        {/* Error message */}
+                        {activeVideoRuntime?.error && (
+                          <div className="p-1.5 rounded-[var(--radius-sm)] border border-[var(--status-error)]/40 bg-[var(--status-error)]/10 text-[var(--status-error)] text-[11px]">
+                            {activeVideoRuntime.error}
+                          </div>
+                        )}
+
+                        {/* Playback bar */}
+                        <div className="flex items-center justify-between p-1.5 rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)]">
+                          <button
+                            type="button"
+                            onClick={() => togglePlayPause(selectedScreen.id)}
+                            className="h-6 px-2.5 rounded-[var(--radius-sm)] text-[11px] font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white flex items-center gap-1 transition cursor-pointer"
+                          >
+                            {activeVideoRuntime?.isPlaying ? (
+                              <>
+                                <Pause className="w-3 h-3" />
+                                <span>Pause</span>
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-3 h-3" />
+                                <span>Play</span>
+                              </>
+                            )}
+                          </button>
+                          <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                            {activeVideoRuntime?.isLoading
+                              ? 'Loading...'
+                              : activeVideoRuntime?.isPlaying
+                              ? 'Playing'
+                              : 'Paused'}
+                          </span>
+                        </div>
+
+                        {/* Fit, Loop, Sound Controls */}
+                        <div className="grid grid-cols-3 gap-1 pt-0.5">
+                          <div>
+                            <span className="text-[10px] text-[var(--text-muted)] block mb-0.5">Fit</span>
+                            <div className="flex gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => handleFitChange('contain')}
+                                className={`flex-1 h-6 text-[10px] rounded-[var(--radius-sm)] border transition cursor-pointer ${
+                                  selectedScreen.content.fit === 'contain'
+                                    ? 'bg-[var(--accent)] text-white border-[var(--accent)] font-medium'
+                                    : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
+                                }`}
+                              >
+                                Box
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFitChange('cover')}
+                                className={`flex-1 h-6 text-[10px] rounded-[var(--radius-sm)] border transition cursor-pointer ${
+                                  selectedScreen.content.fit === 'cover'
+                                    ? 'bg-[var(--accent)] text-white border-[var(--accent)] font-medium'
+                                    : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
+                                }`}
+                              >
+                                Fill
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] text-[var(--text-muted)] block mb-0.5">Loop</span>
+                            <button
+                              type="button"
+                              onClick={handleToggleLoop}
+                              className={`w-full h-6 text-[10px] rounded-[var(--radius-sm)] border transition cursor-pointer ${
+                                selectedScreen.content.loop
+                                  ? 'bg-[var(--accent)] text-white border-[var(--accent)] font-medium'
+                                  : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
+                              }`}
+                            >
+                              {selectedScreen.content.loop ? 'On' : 'Off'}
+                            </button>
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] text-[var(--text-muted)] block mb-0.5">Sound</span>
+                            <button
+                              type="button"
+                              onClick={handleToggleSound}
+                              className={`w-full h-6 text-[10px] rounded-[var(--radius-sm)] border transition flex items-center justify-center gap-1 cursor-pointer ${
+                                !selectedScreen.content.muted
+                                  ? 'bg-[var(--status-success)] text-white border-[var(--status-success)] font-medium'
+                                  : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
+                              }`}
+                            >
+                              {!selectedScreen.content.muted ? (
+                                <Volume2 className="w-3 h-3" />
+                              ) : (
+                                <VolumeX className="w-3 h-3" />
+                              )}
+                              <span>{!selectedScreen.content.muted ? 'On' : 'Mute'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Web Page Controls */}
+                {selectedScreen.content.type === 'url' && (
+                  <WebControlsSection
+                    key={`${selectedScreen.id}-${selectedScreen.content.url}`}
+                    screen={selectedScreen as ScreenData & { content: { type: 'url'; url: string } }}
+                    mode={mode}
+                    onToast={onToast}
+                    updateScreen={updateScreen}
+                    reloadWebScreen={reloadWebScreen}
+                    interactiveScreenId={interactiveScreenId}
+                    setInteractiveScreenId={setInteractiveScreenId}
+                  />
+                )}
               </div>
             )}
-
-            {/* Layout Import / Export */}
-            <div className="pt-3 border-t border-inherit flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExport}
-                className="flex-1 py-1.5 px-2.5 rounded-lg border text-[11px] font-medium transition cursor-pointer text-slate-300 border-slate-700 hover:bg-slate-800 flex items-center justify-center gap-1"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                <span>Export layout</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => importFileInputRef.current?.click()}
-                className="flex-1 py-1.5 px-2.5 rounded-lg border text-[11px] font-medium transition cursor-pointer text-slate-300 border-slate-700 hover:bg-slate-800 flex items-center justify-center gap-1"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                <span>Import layout</span>
-              </button>
-            </div>
-          </div>
+          </section>
         )}
+
+        {/* SECTION 4: FOUND IN MODEL */}
+        {unadoptedTaggedScreens.length > 0 && (
+          <section className="p-3 space-y-2">
+            <button
+              type="button"
+              onClick={() => setSectionFoundOpen(!sectionFoundOpen)}
+              className="w-full flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider hover:text-[var(--text-primary)] transition"
+            >
+              <div className="flex items-center gap-1">
+                {sectionFoundOpen ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )}
+                <span>Found in Model ({unadoptedTaggedScreens.length})</span>
+              </div>
+            </button>
+
+            {sectionFoundOpen && (
+              <div className="space-y-1 pt-0.5">
+                {unadoptedTaggedScreens.map((s) => (
+                  <div
+                    key={s.name}
+                    className="p-1.5 rounded-[var(--radius-sm)] bg-[var(--bg-app)] border border-[var(--border-default)] flex items-center justify-between text-[11px]"
+                  >
+                    <div className="overflow-hidden mr-2">
+                      <div className="font-mono truncate text-[var(--text-primary)]">{s.name}</div>
+                      <div className="text-[10px] text-[var(--text-muted)] font-mono">
+                        {s.width} × {s.height} m ({s.aspectRatio})
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => adoptTaggedScreen(s.name, modelData)}
+                      className="h-5 px-1.5 rounded-[var(--radius-sm)] text-[10px] font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition cursor-pointer shrink-0 flex items-center gap-1"
+                    >
+                      <Check className="w-2.5 h-2.5" />
+                      <span>Adopt</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+
+      {/* Sidebar Footer: Layout Export & Import */}
+      <div className="p-2 border-t border-[var(--border-default)] bg-[var(--bg-surface)] shrink-0 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={handleExport}
+          className="flex-1 h-7 px-2 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+        >
+          <Download className="w-3 h-3" />
+          <span>Export Layout</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => importFileInputRef.current?.click()}
+          className="flex-1 h-7 px-2 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+        >
+          <Upload className="w-3 h-3" />
+          <span>Import Layout</span>
+        </button>
       </div>
     </aside>
   );
