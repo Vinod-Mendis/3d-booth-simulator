@@ -26,6 +26,190 @@ interface ScreensPanelProps {
   cameraRef?: React.RefObject<THREE.Camera | null>;
 }
 
+interface WebControlsSectionProps {
+  screen: ScreenData & { content: { type: 'url'; url: string } };
+  isDark: boolean;
+  mode: ViewerMode;
+  onToast: (type: 'info' | 'success' | 'error', message: string) => void;
+  updateScreen: (id: string, patch: Partial<ScreenData>, persistImmediate?: boolean) => void;
+  reloadWebScreen: (screenId: string) => void;
+  interactiveScreenId: string | null;
+  setInteractiveScreenId: (id: string | null) => void;
+}
+
+const WebControlsSection: React.FC<WebControlsSectionProps> = ({
+  screen,
+  isDark,
+  mode,
+  onToast,
+  updateScreen,
+  reloadWebScreen,
+  interactiveScreenId,
+  setInteractiveScreenId,
+}) => {
+  const [urlInput, setUrlInput] = useState(screen.content.url || '');
+
+  const handleApply = () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) {
+      onToast('error', 'Please enter a URL.');
+      return;
+    }
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      onToast('error', 'URL must start with http:// or https://');
+      return;
+    }
+    updateScreen(screen.id, { content: { type: 'url', url: trimmed } }, true);
+    onToast('success', 'Web page URL applied.');
+  };
+
+  return (
+    <div className="space-y-3 pt-1">
+      {/* URL Input */}
+      <div className="space-y-1.5">
+        <label className="text-[11px] font-semibold text-slate-400">Web App URL</label>
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            placeholder="https://example.com"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleApply();
+            }}
+            className={`flex-1 px-2.5 py-1.5 rounded-lg border font-mono text-xs ${
+              isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
+            }`}
+          />
+          <button
+            type="button"
+            onClick={handleApply}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition cursor-pointer shrink-0"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+
+      {screen.content.url && (
+        <div className="space-y-2.5">
+          {/* URL Summary Card */}
+          <div
+            className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
+              isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100 border-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+              <svg className="w-4 h-4 text-sky-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              <span className="font-mono text-[11px] truncate text-slate-300" title={screen.content.url}>
+                {screen.content.url}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <a
+                href={screen.content.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open in new browser tab"
+                className="p-1 rounded text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+              <button
+                type="button"
+                onClick={() => reloadWebScreen(screen.id)}
+                title="Reload screen page"
+                className="p-1 rounded text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Action Row: Interact Toggle (in Orbit mode) */}
+          {mode === 'orbit' && (
+            <button
+              type="button"
+              onClick={() =>
+                setInteractiveScreenId(
+                  interactiveScreenId === screen.id ? null : screen.id
+                )
+              }
+              className={`w-full py-2 px-3 rounded-xl font-semibold text-xs border transition flex items-center justify-center gap-2 cursor-pointer ${
+                interactiveScreenId === screen.id
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 ring-2 ring-amber-500/20'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+              <span>{interactiveScreenId === screen.id ? 'Exit Interaction' : 'Interact with Screen'}</span>
+            </button>
+          )}
+
+          {/* Virtual Resolution Configuration */}
+          <div className="pt-2 border-t border-slate-800/80">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold text-slate-400">Virtual Resolution (px)</label>
+              <span className="text-[10px] text-slate-500 font-mono">Bigger = sharper</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-[10px] text-slate-500 block mb-0.5">Width px</span>
+                <input
+                  type="number"
+                  min={320}
+                  max={7680}
+                  value={screen.pixelWidth || 1920}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (Number.isFinite(val) && val >= 320) {
+                      updateScreen(screen.id, { pixelWidth: val });
+                    }
+                  }}
+                  className={`w-full px-2 py-1 rounded-lg border font-mono text-xs ${
+                    isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
+                  }`}
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 block mb-0.5">Height px</span>
+                <input
+                  type="number"
+                  min={240}
+                  max={4320}
+                  value={screen.pixelHeight || 1080}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (Number.isFinite(val) && val >= 240) {
+                      updateScreen(screen.id, { pixelHeight: val });
+                    }
+                  }}
+                  className={`w-full px-2 py-1 rounded-lg border font-mono text-xs ${
+                    isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-black'
+                  }`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Framing Information Note */}
+          <p className="text-[10px] text-slate-400 italic bg-slate-900/40 p-2 rounded-lg border border-slate-800">
+            Pages that block embedding will appear blank. Your own apps work when they allow framing.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   modelData,
   mode,
@@ -49,6 +233,9 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   const isPlacingOnSurface = useScreensStore((s) => s.isPlacingOnSurface);
   const adoptedMeshNames = useScreensStore((s) => s.adoptedMeshNames);
   const videoRuntime = useScreensStore((s) => s.videoRuntime);
+  const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
+  const setInteractiveScreenId = useScreensStore((s) => s.setInteractiveScreenId);
+  const reloadWebScreen = useScreensStore((s) => s.reloadWebScreen);
 
   const addScreen = useScreensStore((s) => s.addScreen);
   const updateScreen = useScreensStore((s) => s.updateScreen);
@@ -187,8 +374,8 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
 
   const activeVideoRuntime = selectedScreen ? videoRuntime[selectedScreen.id] : undefined;
 
-  // Video Handlers
-  const handleContentTypeChange = (type: 'none' | 'video') => {
+  // Content Handlers
+  const handleContentTypeChange = (type: 'none' | 'video' | 'url') => {
     if (!selectedScreen) return;
     if (type === 'none') {
       updateScreen(selectedScreen.id, { content: { type: 'none' } }, true);
@@ -205,6 +392,19 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
               fit: 'contain',
               muted: true,
               loop: true,
+            },
+          },
+          true
+        );
+      }
+    } else if (type === 'url') {
+      if (selectedScreen.content.type !== 'url') {
+        updateScreen(
+          selectedScreen.id,
+          {
+            content: {
+              type: 'url',
+              url: '',
             },
           },
           true
@@ -762,12 +962,14 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                     </button>
                     <button
                       type="button"
-                      disabled
-                      className="py-1 rounded-lg border bg-slate-900/50 text-slate-500 border-slate-800/80 cursor-not-allowed flex flex-col items-center justify-center opacity-70"
-                      title="Live interactive web pages coming in Phase 2C"
+                      onClick={() => handleContentTypeChange('url')}
+                      className={`py-1.5 rounded-lg border transition cursor-pointer ${
+                        selectedScreen.content.type === 'url'
+                          ? 'bg-sky-600 text-white border-sky-500 font-semibold'
+                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                      }`}
                     >
-                      <span>Web page</span>
-                      <span className="text-[9px] text-amber-500/80 font-mono">Coming next</span>
+                      Web page
                     </button>
                   </div>
 
@@ -987,6 +1189,21 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                         </div>
                       )}
                     </div>
+                  )}
+
+                  {/* Web Page Configuration & Controls */}
+                  {selectedScreen.content.type === 'url' && (
+                    <WebControlsSection
+                      key={`${selectedScreen.id}-${selectedScreen.content.url}`}
+                      screen={selectedScreen as ScreenData & { content: { type: 'url'; url: string } }}
+                      isDark={isDark}
+                      mode={mode}
+                      onToast={onToast}
+                      updateScreen={updateScreen}
+                      reloadWebScreen={reloadWebScreen}
+                      interactiveScreenId={interactiveScreenId}
+                      setInteractiveScreenId={setInteractiveScreenId}
+                    />
                   )}
                 </div>
               </div>
