@@ -271,7 +271,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     };
   }, [gl]);
 
-  // Frame update loop for movement and collision
+  // Frame update loop for movement and collision (priority -1 to run before Drei <Html> transform)
   useFrame((state, rawDelta) => {
     // If interacting with a screen, pause all walk movements and look rotation
     if (interactiveScreenId) {
@@ -337,6 +337,8 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
 
     // 6. Camera sits 1.65m above feet
     camera.position.set(feetPos.current.x, feetPos.current.y + 1.65, feetPos.current.z);
+    // Explicitly update camera matrix world synchronously so Drei <Html> reads the current frame
+    camera.updateMatrixWorld(true);
 
     // 7. Raycast forward from center screen to detect video or web screens within 6m
     if (state.clock.elapsedTime - lastRaycastTime.current > 0.1) {
@@ -371,7 +373,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
         store.setFocusedWebScreenId(hitWebId);
       }
     }
-  });
+  }, -1);
 
   return null;
 };
