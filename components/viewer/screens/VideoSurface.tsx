@@ -348,35 +348,28 @@ export const VideoSurface: React.FC<VideoSurfaceProps> = ({ screen }) => {
   }, [errorMessage, isLoading, screen.width, screen.height, content]);
 
   return (
-    <group position={[0, 0, 0.0002]} userData={{ screenId: screen.id, isVideoScreen: true }}>
+    <group position={[0, 0, 0.001]} userData={{ screenId: screen.id, isVideoScreen: true }}>
+      {/* Matte black letterbox backing plane */}
+      <mesh position={[0, 0, 0]}>
+        <planeGeometry args={[screen.width, screen.height]} />
+        <meshBasicMaterial color="#000000" />
+      </mesh>
+
       {/* Error or Loading banner texture */}
       {statusTexture && (
-        <mesh position={[0, 0, 0]}>
+        <mesh position={[0, 0, 0.0002]}>
           <planeGeometry args={[screen.width, screen.height]} />
-          <meshBasicMaterial
-            map={statusTexture}
-            toneMapped={false}
-            polygonOffset
-            polygonOffsetFactor={-1}
-            polygonOffsetUnits={-1}
-          />
+          <meshBasicMaterial map={statusTexture} toneMapped={false} />
         </mesh>
       )}
 
-      {/* Active Video Plane: renders flush on the screen face with polygonOffset */}
+      {/* Active Video Plane: positioned cleanly 0.2mm in front of backing plane */}
       {!errorMessage && videoTexture && !isLoading && (
-        <mesh position={[0, 0, 0]}>
+        <mesh position={[0, 0, 0.0002]}>
           <planeGeometry
             args={fitMode === 'contain' ? [containedWidth, containedHeight] : [screen.width, screen.height]}
           />
-          <meshBasicMaterial
-            ref={materialRef}
-            map={videoTexture}
-            toneMapped={false}
-            polygonOffset
-            polygonOffsetFactor={-1}
-            polygonOffsetUnits={-1}
-          />
+          <meshBasicMaterial ref={materialRef} map={videoTexture} toneMapped={false} />
         </mesh>
       )}
     </group>

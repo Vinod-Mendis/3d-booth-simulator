@@ -209,22 +209,21 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
         />
       </mesh>
 
-      {/* 2. Display face: Always keep front face mesh rendered (dark, behind iframe) so raycast selection works */}
-      <mesh position={[0, 0, 0.001]}>
-        <planeGeometry args={[screen.width, screen.height]} />
-        <meshBasicMaterial
-          map={
-            screen.content.type === 'url'
-              ? webPlaceholderTexture
-              : screen.content.type === 'none'
-              ? placeholderTexture
-              : undefined
-          }
-          color={screen.content.type === 'video' ? '#000000' : undefined}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      {/* 2. Display face: Rendered for none or url (web placeholder); video renders its own sole surface */}
+      {screen.content.type !== 'video' && (
+        <mesh position={[0, 0, 0.001]}>
+          <planeGeometry args={[screen.width, screen.height]} />
+          <meshBasicMaterial
+            map={
+              screen.content.type === 'url'
+                ? webPlaceholderTexture
+                : placeholderTexture
+            }
+            toneMapped={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      )}
 
       {/* 3. Dynamic content: Video surface or Web surface */}
       {screen.content.type === 'video' && <VideoSurface screen={screen} />}
