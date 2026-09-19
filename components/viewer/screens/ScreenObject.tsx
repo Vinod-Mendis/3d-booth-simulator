@@ -2,6 +2,7 @@
 
 import React, { useMemo, useRef } from 'react';
 import { ThreeEvent } from '@react-three/fiber';
+import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { ScreenData, LoadedModelData, ViewerMode } from '@/lib/types';
 import { nativeToWorldPos, useScreensStore } from '@/lib/screensStore';
@@ -27,49 +28,32 @@ function createPlaceholderTexture(name: string, width: number, height: number, a
   const ctx = canvas.getContext('2d');
 
   if (ctx) {
-    // Dark sleek background
-    ctx.fillStyle = '#0b0f19';
+    // Neutral dark background
+    ctx.fillStyle = '#18181b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Subtle grid pattern
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
-    ctx.lineWidth = 1;
-    const step = 48;
-    for (let x = 0; x < canvas.width; x += step) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += step) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
+    // Subtle 1px border
+    ctx.strokeStyle = '#38383f';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
 
-    // Border
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-
-    // Screen icon & title
-    ctx.font = 'bold 44px sans-serif';
-    ctx.fillStyle = '#f8fafc';
+    // Screen title
+    ctx.font = '600 40px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#f4f4f5';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(name, canvas.width / 2, canvas.height / 2 - 36);
+    ctx.fillText(name, canvas.width / 2, canvas.height / 2 - 32);
 
     // Dimensions
-    ctx.font = '600 32px monospace';
-    ctx.fillStyle = '#38bdf8';
+    ctx.font = '500 28px monospace';
+    ctx.fillStyle = '#60a5fa';
     const dimText = `${width.toFixed(2)} × ${height.toFixed(2)} m (${aspect})`;
-    ctx.fillText(dimText, canvas.width / 2, canvas.height / 2 + 24);
+    ctx.fillText(dimText, canvas.width / 2, canvas.height / 2 + 20);
 
     // Subtitle note
-    ctx.font = '400 20px sans-serif';
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
-    ctx.fillText('Custom Display Screen • No Content Assigned', canvas.width / 2, canvas.height / 2 + 76);
+    ctx.font = '400 18px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#8b8b95';
+    ctx.fillText('Custom Display • No Content', canvas.width / 2, canvas.height / 2 + 64);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -87,28 +71,28 @@ function createWebPlaceholderTexture(name: string, url: string, isLive: boolean)
   const ctx = canvas.getContext('2d');
 
   if (ctx) {
-    ctx.fillStyle = '#0b0f19';
+    ctx.fillStyle = '#18181b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.strokeStyle = '#38383f';
     ctx.lineWidth = 4;
-    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+    ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
 
-    ctx.font = 'bold 44px sans-serif';
-    ctx.fillStyle = '#f8fafc';
+    ctx.font = '600 40px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#f4f4f5';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(name, canvas.width / 2, canvas.height / 2 - 40);
+    ctx.fillText(name, canvas.width / 2, canvas.height / 2 - 36);
 
-    ctx.font = '500 24px monospace';
-    ctx.fillStyle = '#38bdf8';
+    ctx.font = '500 22px monospace';
+    ctx.fillStyle = '#60a5fa';
     const displayUrl = url.length > 50 ? url.substring(0, 47) + '...' : url;
     ctx.fillText(displayUrl || 'No Web URL assigned', canvas.width / 2, canvas.height / 2 + 15);
 
     if (!isLive) {
-      ctx.font = '600 22px sans-serif';
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillText('● Not live (Occluded or > 25m)', canvas.width / 2, canvas.height / 2 + 65);
+      ctx.font = '500 18px system-ui, -apple-system, sans-serif';
+      ctx.fillStyle = '#8b8b95';
+      ctx.fillText('Not live (occluded or > 25m)', canvas.width / 2, canvas.height / 2 + 60);
     }
   }
 
@@ -188,6 +172,20 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
   const bezelHeight = screen.height + 0.04;
   const bezelDepth = 0.03; // 3 cm deep
 
+  // 3D outline points using drei Line (lineWidth 2, worldUnits false)
+  const outlinePoints = useMemo<[number, number, number][]>(() => {
+    const hw = bezelWidth / 2 + 0.004;
+    const hh = bezelHeight / 2 + 0.004;
+    const z = 0.003;
+    return [
+      [-hw, -hh, z],
+      [hw, -hh, z],
+      [hw, hh, z],
+      [-hw, hh, z],
+      [-hw, -hh, z],
+    ];
+  }, [bezelWidth, bezelHeight]);
+
   return (
     <group
       position={worldPos}
@@ -204,9 +202,9 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
       <mesh position={[0, 0, -bezelDepth / 2]} castShadow receiveShadow>
         <boxGeometry args={[bezelWidth, bezelHeight, bezelDepth]} />
         <meshStandardMaterial
-          color={0x090d16}
-          roughness={0.4}
-          metalness={0.7}
+          color={0x18181b}
+          roughness={0.6}
+          metalness={0.2}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -232,27 +230,14 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
       {screen.content.type === 'video' && <VideoSurface screen={screen} />}
       {screen.content.type === 'url' && <WebSurface screen={screen} />}
 
-      {/* 4. Selection outline highlight */}
+      {/* 4. Selection outline: 2px line in accent color, no glow */}
       {isSelected && isEditing && (
-        <group position={[0, 0, 0.002]}>
-          {/* Cyan outer border indicator */}
-          <lineSegments>
-            <edgesGeometry args={[new THREE.BoxGeometry(bezelWidth + 0.01, bezelHeight + 0.01, 0.032)]} />
-            <lineBasicMaterial color="#38bdf8" linewidth={2} />
-          </lineSegments>
-
-          {/* Corner accent glow badges */}
-          <mesh position={[0, 0, 0.005]}>
-            <planeGeometry args={[screen.width, screen.height]} />
-            <meshBasicMaterial
-              color="#38bdf8"
-              transparent
-              opacity={0.06}
-              side={THREE.DoubleSide}
-              depthWrite={false}
-            />
-          </mesh>
-        </group>
+        <Line
+          points={outlinePoints}
+          color="#3b82f6"
+          lineWidth={2}
+          worldUnits={false}
+        />
       )}
     </group>
   );

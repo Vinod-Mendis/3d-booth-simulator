@@ -151,16 +151,12 @@ export const Scene: React.FC<SceneProps> = ({
   const [groundMesh, setGroundMesh] = useState<THREE.Mesh | null>(null);
   const [isGizmoDragging, setIsGizmoDragging] = useState(false);
 
-  const gridMain = isDark ? '#334155' : '#cbd5e1';
-  const gridSub = isDark ? '#1e293b' : '#e2e8f0';
+  const gridMain = '#38383f';
+  const gridSub = '#27272a';
 
   return (
     <div
-      className={`relative w-full h-full select-none overflow-hidden transition-colors duration-300 ${
-        isDark
-          ? 'bg-radial from-slate-900 via-slate-950 to-black text-slate-100'
-          : 'bg-radial from-slate-100 via-slate-200 to-slate-300 text-slate-900'
-      }`}
+      className="relative w-full h-full select-none overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)]"
     >
       <Canvas
         shadows="soft"
