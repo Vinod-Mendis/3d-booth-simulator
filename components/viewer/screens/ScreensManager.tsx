@@ -32,25 +32,46 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
   const updateScreen = useScreensStore((s) => s.updateScreen);
   const setPlacingOnSurface = useScreensStore((s) => s.setPlacingOnSurface);
   const setEligibleScreens = useScreensStore((s) => s.setEligibleScreens);
+  const setLiveWebScreens = useScreensStore((s) => s.setLiveWebScreens);
+  const adoptedMeshNames = useScreensStore((s) => s.adoptedMeshNames);
 
   const selectedScreen = useMemo(() => {
     return screens.find((s) => s.id === selectedScreenId) || null;
   }, [screens, selectedScreenId]);
 
-  // Performance Coordinator: Check every 250ms for frustum, distance <= 25m, and max 4 nearest playing videos
+  // Collidable meshes for placement
+  const modelMeshes = useMemo(() => {
+    return extractCollidableMeshes(modelData.object);
+  }, [modelData.object]);
+
+  // Occluder meshes: exclude adopted (hidden) SCREEN_* meshes since raycasts ignore Three.js visibility
+  const occluderMeshes = useMemo(() => {
+    return modelMeshes.filter(
+      (m) => !adoptedMeshNames.includes(m.name) && !m.name.startsWith('SCREEN_')
+    );
+  }, [modelMeshes, adoptedMeshNames]);
+
+  // Performance Coordinator: Check every 250ms for videos and live web screens
   useEffect(() => {
     const projScreenMatrix = new THREE.Matrix4();
     const frustum = new THREE.Frustum();
+    const raycaster = new THREE.Raycaster();
+    let lastLiveWebIds: string[] = [];
+    let lastEligibleVideoIds: string[] = [];
 
-    const checkPlaybackEligibility = () => {
+    const shallowEqual = (a: string[], b: string[]) =>
+      a.length === b.length && a.every((val, index) => val === b[index]);
+
+    const checkCoordinator = () => {
       if (document.hidden) {
-        setEligibleScreens([]);
-        return;
-      }
-
-      const videoScreens = screens.filter((s) => s.content.type === 'video');
-      if (videoScreens.length === 0) {
-        setEligibleScreens([]);
+        if (lastEligibleVideoIds.length > 0) {
+          lastEligibleVideoIds = [];
+          setEligibleScreens([]);
+        }
+        if (lastLiveWebIds.length > 0) {
+          lastLiveWebIds = [];
+          setLiveWebScreens([]);
+        }
         return;
       }
 
@@ -62,41 +83,105 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
       const forward = new THREE.Vector3();
       camera.getWorldDirection(forward);
 
-      const eligibleCandidates: { id: string; distance: number }[] = [];
+      // --- 1. Video Screens Coordinator (max 4 playing) ---
+      const videoScreens = screens.filter((s) => s.content.type === 'video');
+      const eligibleVideoCandidates: { id: string; distance: number }[] = [];
 
       for (const screen of videoScreens) {
+        const worldPos = nativeToWorldPos(screen.position, modelData);
+        const dist = camera.position.distanceTo(worldPos);
+
+        if (dist <= 25) {
+          const radius = Math.max(screen.width, screen.height) * 0.75 + 1.5;
+          const sphere = new THREE.Sphere(worldPos, radius);
+          const inFrustum = frustum.intersectsSphere(sphere);
+          const toScreen = worldPos.clone().sub(camera.position).normalize();
+          const isFacing = toScreen.dot(forward) > -0.3;
+
+          if (inFrustum || isFacing) {
+            eligibleVideoCandidates.push({ id: screen.id, distance: dist });
+          }
+        }
+      }
+
+      eligibleVideoCandidates.sort((a, b) => a.distance - b.distance);
+      const top4VideoIds = eligibleVideoCandidates.slice(0, 4).map((c) => c.id);
+      if (!shallowEqual(lastEligibleVideoIds, top4VideoIds)) {
+        lastEligibleVideoIds = top4VideoIds;
+        setEligibleScreens(top4VideoIds);
+      }
+
+      // --- 2. Web Screens Coordinator (max 3 live, with 5-point occlusion raycasting) ---
+      const webScreens = screens.filter((s) => s.content.type === 'url');
+      const eligibleWebCandidates: { id: string; distance: number }[] = [];
+
+      for (const screen of webScreens) {
         const worldPos = nativeToWorldPos(screen.position, modelData);
         const dist = camera.position.distanceTo(worldPos);
 
         // Max distance 25 meters
         if (dist > 25) continue;
 
-        // View frustum and facing check
-        const radius = Math.max(screen.width, screen.height) * 0.75 + 1.5;
-        const sphere = new THREE.Sphere(worldPos, radius);
-        const inFrustum = frustum.intersectsSphere(sphere);
-
+        // Behind camera check
         const toScreen = worldPos.clone().sub(camera.position).normalize();
-        const isFacing = toScreen.dot(forward) > -0.3; // within camera forward hemisphere or periphery
+        if (toScreen.dot(forward) < -0.2) continue;
 
-        if (inFrustum || isFacing) {
-          eligibleCandidates.push({ id: screen.id, distance: dist });
+        // Back-side facing check: screen normal points along local +Z
+        const worldQuat = new THREE.Quaternion(...screen.quaternion);
+        const screenNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(worldQuat).normalize();
+        const toCamFromScreen = camera.position.clone().sub(worldPos).normalize();
+        if (screenNormal.dot(toCamFromScreen) <= 0) continue; // Looking at back side
+
+        // 5-point Raycast Occlusion test against occluderMeshes
+        // Known limitation: a screen partly behind a pillar is either fully shown or fully hidden.
+        const hw = screen.width * 0.48;
+        const hh = screen.height * 0.48;
+        const testPoints = [
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(-hw, hh, 0),
+          new THREE.Vector3(hw, hh, 0),
+          new THREE.Vector3(-hw, -hh, 0),
+          new THREE.Vector3(hw, -hh, 0),
+        ];
+
+        let blockedCount = 0;
+        for (const localPt of testPoints) {
+          const ptWorld = localPt.clone().applyQuaternion(worldQuat).add(worldPos);
+          const dir = ptWorld.clone().sub(camera.position);
+          const distToPt = dir.length();
+          dir.normalize();
+
+          raycaster.set(camera.position, dir);
+          const hits = raycaster.intersectObjects(occluderMeshes, false);
+          // Blocked only if hit.distance < distanceToTargetPoint - 0.05
+          if (hits.length > 0 && hits[0].distance < distToPt - 0.05) {
+            blockedCount++;
+          }
         }
+
+        // Fully occluded if all 5 points are blocked
+        if (blockedCount === 5) continue;
+
+        eligibleWebCandidates.push({ id: screen.id, distance: dist });
       }
 
-      // Sort by distance: nearest 4 are allowed to play simultaneously
-      eligibleCandidates.sort((a, b) => a.distance - b.distance);
-      const top4EligibleIds = eligibleCandidates.slice(0, 4).map((c) => c.id);
+      // Sort by distance: nearest 3 are live iframes
+      eligibleWebCandidates.sort((a, b) => a.distance - b.distance);
+      const top3WebIds = eligibleWebCandidates.slice(0, 3).map((c) => c.id);
 
-      setEligibleScreens(top4EligibleIds);
+      if (!shallowEqual(lastLiveWebIds, top3WebIds)) {
+        lastLiveWebIds = top3WebIds;
+        setLiveWebScreens(top3WebIds);
+      }
     };
 
-    const interval = setInterval(checkPlaybackEligibility, 250);
+    const interval = setInterval(checkCoordinator, 250);
     const handleVisibilityChange = () => {
       if (document.hidden) {
         setEligibleScreens([]);
+        setLiveWebScreens([]);
       } else {
-        checkPlaybackEligibility();
+        checkCoordinator();
       }
     };
 
@@ -106,12 +191,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [screens, modelData, camera, setEligibleScreens]);
-
-  // Collidable meshes for raycasting
-  const modelMeshes = useMemo(() => {
-    return extractCollidableMeshes(modelData.object);
-  }, [modelData.object]);
+  }, [screens, modelData, camera, occluderMeshes, setEligibleScreens, setLiveWebScreens]);
 
   // "Place on surface" click listener
   useEffect(() => {

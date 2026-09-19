@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { ScreenData, LoadedModelData, ViewerMode } from '@/lib/types';
 import { nativeToWorldPos, useScreensStore } from '@/lib/screensStore';
 import { VideoSurface } from './VideoSurface';
+import { WebSurface } from './WebSurface';
 
 interface ScreenObjectProps {
   screen: ScreenData;
@@ -76,6 +77,46 @@ function createPlaceholderTexture(name: string, width: number, height: number, a
   return texture;
 }
 
+/**
+ * Creates a placeholder texture for web screens showing URL and live status.
+ */
+function createWebPlaceholderTexture(name: string, url: string, isLive: boolean): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 576;
+  const ctx = canvas.getContext('2d');
+
+  if (ctx) {
+    ctx.fillStyle = '#0b0f19';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+    ctx.font = 'bold 44px sans-serif';
+    ctx.fillStyle = '#f8fafc';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, canvas.width / 2, canvas.height / 2 - 40);
+
+    ctx.font = '500 24px monospace';
+    ctx.fillStyle = '#38bdf8';
+    const displayUrl = url.length > 50 ? url.substring(0, 47) + '...' : url;
+    ctx.fillText(displayUrl || 'No Web URL assigned', canvas.width / 2, canvas.height / 2 + 15);
+
+    if (!isLive) {
+      ctx.font = '600 22px sans-serif';
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('● Not live (Occluded or > 25m)', canvas.width / 2, canvas.height / 2 + 65);
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 export const ScreenObject: React.FC<ScreenObjectProps> = ({
   screen,
   modelData,
@@ -85,6 +126,7 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
   onSelect,
 }) => {
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
+  const lastClickTimeRef = useRef(0);
 
   // Compute world position from model native space
   const worldPos = useMemo(() => {
@@ -96,10 +138,18 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
     return new THREE.Quaternion(...screen.quaternion);
   }, [screen.quaternion]);
 
-  // Placeholder texture
+  const webRuntime = useScreensStore((s) => s.webRuntime[screen.id]);
+  const isLive = webRuntime?.isLive !== false;
+
+  // Placeholder textures
   const placeholderTexture = useMemo(() => {
     return createPlaceholderTexture(screen.name, screen.width, screen.height, screen.aspect);
   }, [screen.name, screen.width, screen.height, screen.aspect]);
+
+  const webPlaceholderTexture = useMemo(() => {
+    const url = screen.content.type === 'url' ? screen.content.url : '';
+    return createWebPlaceholderTexture(screen.name, url, isLive);
+  }, [screen.name, screen.content, isLive]);
 
   // Track pointer movement between down and up for strict click selection (< 4px)
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
@@ -108,6 +158,7 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
   };
 
   const togglePlayPause = useScreensStore((s) => s.togglePlayPause);
+  const setInteractiveScreenId = useScreensStore((s) => s.setInteractiveScreenId);
 
   const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
     if (mode !== 'orbit' || !pointerDownPos.current) return;
@@ -118,7 +169,14 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
     // Only select or toggle if pointer moved less than 4 px
     if (dx * dx + dy * dy <= 16) {
       e.stopPropagation();
-      if (!isEditing && screen.content.type === 'video') {
+      const now = Date.now();
+      const isDoubleClick = now - lastClickTimeRef.current < 350;
+      lastClickTimeRef.current = now;
+
+      // Double-click in presentation mode to interact with web screen
+      if (isDoubleClick && !isEditing && screen.content.type === 'url') {
+        setInteractiveScreenId(screen.id);
+      } else if (!isEditing && screen.content.type === 'video') {
         togglePlayPause(screen.id);
       } else {
         onSelect();
@@ -136,7 +194,11 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
       quaternion={worldQuat}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      userData={{ screenId: screen.id, isVideoScreen: screen.content.type === 'video' }}
+      userData={{
+        screenId: screen.id,
+        isVideoScreen: screen.content.type === 'video',
+        isWebScreen: screen.content.type === 'url',
+      }}
     >
       {/* 1. Back casing and bezel: 3 cm deep, centered at z = -0.015 */}
       <mesh position={[0, 0, -bezelDepth / 2]} castShadow receiveShadow>
@@ -149,17 +211,28 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
         />
       </mesh>
 
-      {/* 2. Display face: Video surface or placeholder canvas */}
-      {screen.content.type === 'video' ? (
-        <VideoSurface screen={screen} />
-      ) : (
-        <mesh position={[0, 0, 0.001]}>
-          <planeGeometry args={[screen.width, screen.height]} />
-          <meshBasicMaterial map={placeholderTexture} toneMapped={false} side={THREE.DoubleSide} />
-        </mesh>
-      )}
+      {/* 2. Display face: Always keep front face mesh rendered (dark, behind iframe) so raycast selection works */}
+      <mesh position={[0, 0, 0.001]}>
+        <planeGeometry args={[screen.width, screen.height]} />
+        <meshBasicMaterial
+          map={
+            screen.content.type === 'url'
+              ? webPlaceholderTexture
+              : screen.content.type === 'none'
+              ? placeholderTexture
+              : undefined
+          }
+          color={screen.content.type === 'video' ? '#000000' : undefined}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
-      {/* 3. Selection outline highlight */}
+      {/* 3. Dynamic content: Video surface or Web surface */}
+      {screen.content.type === 'video' && <VideoSurface screen={screen} />}
+      {screen.content.type === 'url' && <WebSurface screen={screen} />}
+
+      {/* 4. Selection outline highlight */}
       {isSelected && isEditing && (
         <group position={[0, 0, 0.002]}>
           {/* Cyan outer border indicator */}
