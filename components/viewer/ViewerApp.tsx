@@ -282,6 +282,7 @@ export const ViewerApp: React.FC = () => {
         onOpenFile={handleOpenFile}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        isTouch={isTouch}
       />
 
       {/* Main Workspace: Flex row containing Canvas & Docked Sidebar */}

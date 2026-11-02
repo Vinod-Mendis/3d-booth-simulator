@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'BoothWalk 3D - Event Booth & Stage Walkthrough Viewer',
   description: 'Interactive 3D booth and stage walkthrough viewer for design review and approvals',
+  // Lets iPhone users launch full-screen from the Home Screen (Safari has no Fullscreen API there)
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent' },
 };
 
 export const viewport: Viewport = {

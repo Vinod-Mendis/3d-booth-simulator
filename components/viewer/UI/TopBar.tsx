@@ -9,9 +9,12 @@ import {
   FolderOpen,
   PanelRightClose,
   PanelRightOpen,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import { ViewerMode, UnitType, LoadedModelData } from '@/lib/types';
 import { getUnitDisplayLabel } from '@/lib/units';
+import { useFullscreen } from './useFullscreen';
 
 interface TopBarProps {
   mode: ViewerMode;
@@ -23,6 +26,7 @@ interface TopBarProps {
   onOpenFile: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
+  isTouch?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -35,7 +39,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenFile,
   isSidebarOpen,
   onToggleSidebar,
+  isTouch = false,
 }) => {
+  const { isSupported: canFullscreen, isFullscreen, toggle: toggleFullscreen } = useFullscreen();
   const hasModel = modelData !== null;
   const detectedUnit = modelData ? modelData.detectedUnit : 'm';
   const unitOptions: UnitType[] = ['auto', 'm', 'cm', 'mm', 'ft', 'in'];
@@ -164,6 +170,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           <FolderOpen className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Open File</span>
         </button>
+
+        {isTouch && canFullscreen && (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            className="p-1.5 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer"
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </button>
+        )}
 
         {hasModel && (
           <>
