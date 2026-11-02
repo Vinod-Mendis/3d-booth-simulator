@@ -57,6 +57,8 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
     const projScreenMatrix = new THREE.Matrix4();
     const frustum = new THREE.Frustum();
     const raycaster = new THREE.Raycaster();
+    const ptWorld = new THREE.Vector3();
+    const rayDir = new THREE.Vector3();
     let lastLiveWebIds: string[] = [];
     let lastEligibleVideoIds: string[] = [];
 
@@ -77,7 +79,6 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
       }
 
       camera.updateMatrixWorld();
-      scene.updateMatrixWorld(true);
       camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
       projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
       frustum.setFromProjectionMatrix(projScreenMatrix);
@@ -134,48 +135,30 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
         const toCamFromScreen = camera.position.clone().sub(worldPos).normalize();
         if (screenNormal.dot(toCamFromScreen) <= 0) continue; // Looking at back side
 
-        // 9-point Raycast Occlusion test against occluderMeshes
-        // Tests center, bottom edge (critical for reception counters/desks), corners, and midpoints
+        // 9-point Raycast Occlusion test against occluderMeshes (early exit on first blocked point)
         const hw = screen.width * 0.48;
         const hh = screen.height * 0.48;
         const testPoints = [
-          new THREE.Vector3(0, 0, 0),         // center
-          new THREE.Vector3(0, -hh, 0),        // bottom-center (where counters occlude)
-          new THREE.Vector3(-hw, -hh, 0),      // bottom-left
-          new THREE.Vector3(hw, -hh, 0),       // bottom-right
-          new THREE.Vector3(-hw, 0, 0),        // mid-left
-          new THREE.Vector3(hw, 0, 0),         // mid-right
-          new THREE.Vector3(-hw, hh, 0),       // top-left
-          new THREE.Vector3(0, hh, 0),         // top-center
-          new THREE.Vector3(hw, hh, 0),        // top-right
+          [0, 0], [0, -hh], [-hw, -hh], [hw, -hh], [-hw, 0], [hw, 0], [-hw, hh], [0, hh], [hw, hh],
         ];
 
-        let blockedCount = 0;
-        let centerBlocked = false;
+        let blocked = false;
+        const isInteractive = interactiveScreenId === screen.id;
 
-        for (let i = 0; i < testPoints.length; i++) {
-          const localPt = testPoints[i];
-          const ptWorld = localPt.clone().applyQuaternion(worldQuat).add(worldPos);
-          const dir = ptWorld.clone().sub(camera.position);
-          const distToPt = dir.length();
-          dir.normalize();
+        if (!isInteractive) {
+          for (let i = 0; i < testPoints.length && !blocked; i++) {
+            ptWorld.set(testPoints[i][0], testPoints[i][1], 0).applyQuaternion(worldQuat).add(worldPos);
+            rayDir.copy(ptWorld).sub(camera.position);
+            const distToPt = rayDir.length();
+            rayDir.normalize();
 
-          raycaster.set(camera.position, dir);
-          const hits = raycaster.intersectObjects(occluderMeshes, false);
-          // Blocked only if hit.distance < distanceToTargetPoint - 0.05
-          if (hits.length > 0 && hits[0].distance < distToPt - 0.05) {
-            blockedCount++;
-            if (i === 0) {
-              centerBlocked = true;
-            }
+            raycaster.set(camera.position, rayDir);
+            raycaster.far = Math.max(distToPt - 0.05, 0);
+            blocked = raycaster.intersectObjects(occluderMeshes, false).length > 0;
           }
         }
 
-        // Occluded if center is blocked OR any test point is blocked by foreground geometry (e.g. counter, pillar, walls)
-        const isInteractive = interactiveScreenId === screen.id;
-        if (!isInteractive && (centerBlocked || blockedCount >= 1)) {
-          continue;
-        }
+        if (blocked) continue;
 
         eligibleWebCandidates.push({ id: screen.id, distance: dist });
       }

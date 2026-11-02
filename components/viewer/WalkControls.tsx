@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { LoadedModelData } from '@/lib/types';
@@ -38,6 +38,27 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
   const lastRaycastTime = useRef(0);
   const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
   const prevInteractiveRef = useRef<string | null>(null);
+  const adoptedMeshNames = useScreensStore((s) => s.adoptedMeshNames);
+
+  // Collision meshes are cached (not re-traversed every frame); rebuilt when adopted/hidden meshes change
+  const modelMeshes = useMemo(() => {
+    void adoptedMeshNames;
+    return extractCollidableMeshes(modelData.object);
+  }, [modelData.object, adoptedMeshNames]);
+  const groundCollidables = useMemo(
+    () => (groundMesh ? [...modelMeshes, groundMesh] : modelMeshes),
+    [modelMeshes, groundMesh]
+  );
+
+  // Reusable scratch objects for the frame loop
+  const scratch = useRef({
+    euler: new THREE.Euler(0, 0, 0, 'YXZ'),
+    moveDelta: new THREE.Vector3(),
+    forward: new THREE.Vector3(),
+    right: new THREE.Vector3(),
+    dir: new THREE.Vector3(),
+    center: new THREE.Vector2(0, 0),
+  });
 
   // E key listener for video play/pause or web screen interaction
   useEffect(() => {
@@ -289,8 +310,9 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     }
 
     // 2. Compute camera rotation
-    const euler = new THREE.Euler(pitch.current, yaw.current, 0, 'YXZ');
-    camera.quaternion.setFromEuler(euler);
+    const sc = scratch.current;
+    sc.euler.set(pitch.current, yaw.current, 0, 'YXZ');
+    camera.quaternion.setFromEuler(sc.euler);
 
     // 3. Compute requested movement direction in horizontal plane
     let moveZ = 0; // Forward (-Z) / Backward (+Z)
@@ -304,24 +326,22 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     const isRunning = isKeyActive(['ShiftLeft', 'ShiftRight', 'Shift']);
     const speed = isRunning ? RUN_SPEED : WALK_SPEED;
 
-    const moveDelta = new THREE.Vector3(0, 0, 0);
+    const moveDelta = sc.moveDelta.set(0, 0, 0);
 
     if (moveX !== 0 || moveZ !== 0) {
       // Forward direction: (-sin(yaw), 0, -cos(yaw))
-      const forward = new THREE.Vector3(-Math.sin(yaw.current), 0, -Math.cos(yaw.current));
+      const forward = sc.forward.set(-Math.sin(yaw.current), 0, -Math.cos(yaw.current));
       // Right direction: (cos(yaw), 0, -sin(yaw))
-      const right = new THREE.Vector3(Math.cos(yaw.current), 0, -Math.sin(yaw.current));
+      const right = sc.right.set(Math.cos(yaw.current), 0, -Math.sin(yaw.current));
 
-      const dir = new THREE.Vector3()
+      const dir = sc.dir
+        .set(0, 0, 0)
         .addScaledVector(forward, -moveZ)
         .addScaledVector(right, moveX)
         .normalize();
 
       moveDelta.copy(dir).multiplyScalar(speed * dt);
     }
-
-    // 4. Extract meshes for collision
-    const modelMeshes = extractCollidableMeshes(modelData.object);
 
     // 5. Update position using collision solver
     const { newPosition } = updatePlayerPositionWithCollision(
@@ -330,7 +350,8 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
       modelMeshes,
       groundMesh,
       dt,
-      0.35 // 0.35m body radius
+      0.35, // 0.35m body radius
+      groundCollidables
     );
 
     feetPos.current.copy(newPosition);
@@ -343,7 +364,8 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     // 7. Raycast forward from center screen to detect video or web screens within 6m
     if (state.clock.elapsedTime - lastRaycastTime.current > 0.1) {
       lastRaycastTime.current = state.clock.elapsedTime;
-      raycaster.current.setFromCamera(new THREE.Vector2(0, 0), camera);
+      raycaster.current.far = 6.0;
+      raycaster.current.setFromCamera(sc.center, camera);
       const intersects = raycaster.current.intersectObjects(scene.children, true);
       let hitVideoId: string | null = null;
       let hitWebId: string | null = null;

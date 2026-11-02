@@ -10,6 +10,12 @@ const raycaster = new THREE.Raycaster();
 const normalMatrix = new THREE.Matrix3();
 const tempVec = new THREE.Vector3();
 const tempNormal = new THREE.Vector3();
+const tempOrigin = new THREE.Vector3();
+const tempDir = new THREE.Vector3();
+const tempSlide = new THREE.Vector3();
+const downDir = new THREE.Vector3(0, -1, 0);
+const RAY_HEIGHTS = [0.55, 1.2]; // Low and high body checks
+const ZERO_DELTA = new THREE.Vector3(0, 0, 0);
 
 /**
  * Extracts all valid meshes from an Object3D hierarchy for raycasting.
@@ -38,14 +44,14 @@ function resolveWallCollision(
     return { resolvedDelta: moveDelta.clone(), hitWall: false };
   }
 
-  const moveDir = moveDelta.clone().normalize();
+  const moveDir = tempDir.copy(moveDelta).normalize();
   const rayDist = bodyRadius + moveLength;
 
-  const rayHeights = [0.55, 1.2]; // Low and high body checks
+  const rayHeights = RAY_HEIGHTS;
   let firstHit: THREE.Intersection | null = null;
 
   for (const h of rayHeights) {
-    const origin = new THREE.Vector3(feetPos.x, feetPos.y + h, feetPos.z);
+    const origin = tempOrigin.set(feetPos.x, feetPos.y + h, feetPos.z);
     raycaster.set(origin, moveDir);
     raycaster.near = 0.01;
     raycaster.far = rayDist;
@@ -75,26 +81,26 @@ function resolveWallCollision(
   // Zero out the Y component for horizontal wall sliding
   tempNormal.y = 0;
   if (tempNormal.lengthSq() < 0.0001) {
-    return { resolvedDelta: new THREE.Vector3(0, 0, 0), hitWall: true };
+    return { resolvedDelta: ZERO_DELTA, hitWall: true };
   }
   tempNormal.normalize();
 
   // Project movement onto the wall plane: move - (move . N) * N
   const dot = moveDelta.dot(tempNormal);
-  const slideDelta = moveDelta.clone().sub(tempNormal.clone().multiplyScalar(dot));
+  const slideDelta = tempSlide.copy(moveDelta).addScaledVector(tempNormal, -dot);
 
   const slideLength = slideDelta.length();
   if (slideLength < 0.00001) {
-    return { resolvedDelta: new THREE.Vector3(0, 0, 0), hitWall: true };
+    return { resolvedDelta: ZERO_DELTA, hitWall: true };
   }
 
   // Check if slide direction also hits another wall
-  const slideDir = slideDelta.clone().normalize();
+  const slideDir = tempDir.copy(slideDelta).normalize();
   const slideRayDist = bodyRadius + slideLength;
 
   let secondaryHit = false;
   for (const h of rayHeights) {
-    const origin = new THREE.Vector3(feetPos.x, feetPos.y + h, feetPos.z);
+    const origin = tempOrigin.set(feetPos.x, feetPos.y + h, feetPos.z);
     raycaster.set(origin, slideDir);
     raycaster.near = 0.01;
     raycaster.far = slideRayDist;
@@ -107,7 +113,7 @@ function resolveWallCollision(
   }
 
   if (secondaryHit) {
-    return { resolvedDelta: new THREE.Vector3(0, 0, 0), hitWall: true };
+    return { resolvedDelta: ZERO_DELTA, hitWall: true };
   }
 
   return { resolvedDelta: slideDelta, hitWall: true };
@@ -126,8 +132,7 @@ function resolveGround(
   dt: number,
   maxDistance = 2.0
 ): { newFeetY: number; grounded: boolean } {
-  const origin = new THREE.Vector3(targetFeetX, currentFeetY + 0.5, targetFeetZ);
-  const downDir = new THREE.Vector3(0, -1, 0);
+  const origin = tempOrigin.set(targetFeetX, currentFeetY + 0.5, targetFeetZ);
 
   raycaster.set(origin, downDir);
   raycaster.near = 0.01;
@@ -159,7 +164,8 @@ export function updatePlayerPositionWithCollision(
   modelMeshes: THREE.Mesh[],
   groundPlaneMesh: THREE.Mesh | null,
   dt: number,
-  bodyRadius = 0.35
+  bodyRadius = 0.35,
+  precomputedGroundCollidables?: THREE.Mesh[]
 ): CollisionResult {
   // 1. Wall check & slide
   const { resolvedDelta, hitWall } = resolveWallCollision(
@@ -173,9 +179,9 @@ export function updatePlayerPositionWithCollision(
   const targetZ = currentFeetPos.z + resolvedDelta.z;
 
   // 2. Ground check against model meshes + ground plane
-  const groundCollidables: THREE.Mesh[] = groundPlaneMesh
-    ? [...modelMeshes, groundPlaneMesh]
-    : [...modelMeshes];
+  const groundCollidables: THREE.Mesh[] =
+    precomputedGroundCollidables ??
+    (groundPlaneMesh ? [...modelMeshes, groundPlaneMesh] : modelMeshes);
 
   const { newFeetY, grounded } = resolveGround(
     targetX,
