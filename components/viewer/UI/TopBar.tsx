@@ -41,12 +41,12 @@ export const TopBar: React.FC<TopBarProps> = ({
   const unitOptions: UnitType[] = ['auto', 'm', 'cm', 'mm', 'ft', 'in'];
 
   return (
-    <header className="h-10 px-3 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] select-none shrink-0 z-30">
+    <header className="h-10 px-2 sm:px-3 gap-1 flex items-center justify-between overflow-x-auto border-b border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] select-none shrink-0 z-30">
       {/* Left: App Title & Model Badge */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 font-semibold text-[13px] tracking-tight">
           <Box className="w-4 h-4 text-[var(--accent)]" />
-          <span>BoothViewer</span>
+          <span className="hidden sm:inline">BoothViewer</span>
         </div>
         {hasModel && (
           <>
@@ -86,7 +86,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             }`}
           >
             <Rotate3d className="w-3.5 h-3.5" />
-            <span>Orbit</span>
+            <span className="hidden sm:inline">Orbit</span>
           </button>
 
           <button
@@ -106,7 +106,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             }`}
           >
             <Footprints className="w-3.5 h-3.5" />
-            <span>Walk</span>
+            <span className="hidden sm:inline">Walk</span>
           </button>
         </div>
 
@@ -162,7 +162,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-[12px] font-medium transition cursor-pointer"
         >
           <FolderOpen className="w-3.5 h-3.5" />
-          <span>Open File</span>
+          <span className="hidden sm:inline">Open File</span>
         </button>
 
         {hasModel && (

@@ -6,10 +6,35 @@ import { ViewerMode } from '@/lib/types';
 interface HintChipsProps {
   mode: ViewerMode;
   hasModel: boolean;
+  isTouch?: boolean;
 }
 
-export const HintChips: React.FC<HintChipsProps> = ({ mode, hasModel }) => {
+export const HintChips: React.FC<HintChipsProps> = ({ mode, hasModel, isTouch = false }) => {
   if (!hasModel) return null;
+
+  // On touch devices the walk joystick sits at the bottom, so lift the chips above it
+  if (isTouch) {
+    const hints =
+      mode === 'orbit'
+        ? ['1 finger: Rotate', '2 fingers: Pan / Zoom']
+        : ['Left stick: Move', 'Drag: Look'];
+    return (
+      <div
+        className={`absolute inset-x-0 z-20 flex items-center justify-center pointer-events-none select-none px-4 ${
+          mode === 'walk' ? 'bottom-40' : 'bottom-3'
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-center gap-2 px-3 py-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)]/80 text-[var(--text-muted)] text-[11px]">
+          {hints.map((h, i) => (
+            <React.Fragment key={h}>
+              {i > 0 && <span className="text-[var(--border-default)]">•</span>}
+              <span>{h}</span>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="absolute bottom-3 inset-x-0 z-20 flex items-center justify-center pointer-events-none select-none px-4">

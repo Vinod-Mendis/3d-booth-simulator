@@ -170,6 +170,7 @@ export const Scene: React.FC<SceneProps> = ({
           powerPreference: 'high-performance',
         }}
         tabIndex={0}
+        style={{ touchAction: 'none' }}
         className={`w-full h-full focus:outline-none ${
           mode === 'walk' ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
         }`}

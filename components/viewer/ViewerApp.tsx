@@ -14,6 +14,7 @@ import { InfoPanel } from './UI/InfoPanel';
 import { HintChips } from './UI/HintChips';
 import { Toaster } from './UI/Toaster';
 import { ScreensPanel } from './screens/ScreensPanel';
+import { TouchControls, useIsTouchDevice } from './UI/TouchControls';
 
 export const ViewerApp: React.FC = () => {
   const [modelData, setModelData] = useState<LoadedModelData | null>(null);
@@ -29,6 +30,8 @@ export const ViewerApp: React.FC = () => {
   const focusedWebScreenId = useScreensStore((s) => s.focusedWebScreenId);
   const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
   const setInteractiveScreenId = useScreensStore((s) => s.setInteractiveScreenId);
+
+  const isTouch = useIsTouchDevice();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
@@ -120,7 +123,7 @@ export const ViewerApp: React.FC = () => {
     setModelData(sample);
     setSelectedUnit('m');
     setMode('orbit');
-    setIsSidebarOpen(true);
+    setIsSidebarOpen(window.innerWidth >= 1100);
     handleResetView();
     addToast('success', 'Sample booth loaded');
   };
@@ -239,7 +242,7 @@ export const ViewerApp: React.FC = () => {
       setModelData(newModel);
       setSelectedUnit('auto');
       setMode('orbit');
-      setIsSidebarOpen(true);
+      setIsSidebarOpen(window.innerWidth >= 1100);
       handleResetView();
       removeToast(toastId);
       addToast('success', `Loaded "${newModel.name}"`);
@@ -256,7 +259,7 @@ export const ViewerApp: React.FC = () => {
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className="flex flex-col w-screen h-screen overflow-hidden select-none bg-[var(--bg-app)] text-[var(--text-primary)] font-sans"
+      className="flex flex-col w-full h-dvh overflow-hidden select-none bg-[var(--bg-app)] text-[var(--text-primary)] font-sans"
     >
       {/* Hidden file input */}
       <input
@@ -308,7 +311,10 @@ export const ViewerApp: React.FC = () => {
           <InfoPanel modelData={modelData} />
 
           {/* Bottom-center Hint Chips */}
-          <HintChips mode={mode} hasModel={modelData !== null} />
+          <HintChips mode={mode} hasModel={modelData !== null} isTouch={isTouch} />
+
+          {/* Touch joystick + action buttons (phones / tablets, walk mode only) */}
+          {isTouch && mode === 'walk' && modelData && <TouchControls />}
 
           {/* Toast Notifications (positioned inside canvas container) */}
           <Toaster toasts={toasts} onDismiss={removeToast} />
@@ -319,7 +325,7 @@ export const ViewerApp: React.FC = () => {
           )}
 
           {/* Walk Mode "Press E to play/pause" Floating Prompt */}
-          {mode === 'walk' && focusedVideoScreenId && !interactiveScreenId && (
+          {mode === 'walk' && !isTouch && focusedVideoScreenId && !interactiveScreenId && (
             <div className="absolute top-[calc(50%+24px)] left-1/2 -translate-x-1/2 bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium shadow-md pointer-events-none flex items-center gap-1.5 z-40">
               <kbd className="px-1 py-0.2 bg-[var(--bg-app)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[10px] font-mono font-bold text-[var(--accent-text)]">
                 E
@@ -331,7 +337,7 @@ export const ViewerApp: React.FC = () => {
           )}
 
           {/* Walk Mode "Press E to use this screen" Floating Prompt */}
-          {mode === 'walk' && focusedWebScreenId && !interactiveScreenId && (
+          {mode === 'walk' && !isTouch && focusedWebScreenId && !interactiveScreenId && (
             <div className="absolute top-[calc(50%+24px)] left-1/2 -translate-x-1/2 bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium shadow-md pointer-events-none flex items-center gap-1.5 z-40">
               <kbd className="px-1 py-0.2 bg-[var(--bg-app)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[10px] font-mono font-bold text-[var(--accent-text)]">
                 E
@@ -353,7 +359,7 @@ export const ViewerApp: React.FC = () => {
                 className="h-6 px-2 rounded-[var(--radius-sm)] font-medium text-[11px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black transition cursor-pointer flex items-center gap-1"
               >
                 <span>Exit screen</span>
-                <span className="text-[10px] opacity-75">(or click canvas)</span>
+                <span className="text-[10px] opacity-75">(or tap canvas)</span>
               </button>
             </div>
           )}

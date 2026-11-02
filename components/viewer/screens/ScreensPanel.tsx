@@ -570,7 +570,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   return (
     <aside
       aria-label="Screens & Display Inspector"
-      className="w-[300px] h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)] text-[var(--text-primary)] select-none shrink-0 z-20 overflow-hidden"
+      className="w-[300px] max-md:absolute max-md:right-0 max-md:inset-y-0 max-md:w-[min(300px,88vw)] h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)] text-[var(--text-primary)] select-none shrink-0 z-20 overflow-hidden"
     >
       <input
         ref={importFileInputRef}

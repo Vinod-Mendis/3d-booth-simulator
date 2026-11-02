@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { LoadedModelData } from '@/lib/types';
 import { extractCollidableMeshes, updatePlayerPositionWithCollision } from '@/lib/collision';
 import { useScreensStore } from '@/lib/screensStore';
+import { touchInput } from '@/lib/touchInput';
 
 interface WalkControlsProps {
   modelData: LoadedModelData;
@@ -18,6 +19,7 @@ const WALK_SPEED = 2.2; // 2.2 m/s
 const RUN_SPEED = 5.0; // 5.0 m/s
 const TURN_SPEED = 2.0; // 2.0 rad/s
 const LOOK_SENSITIVITY = 0.0022;
+const TOUCH_LOOK_SENSITIVITY = 0.004;
 
 export const WalkControls: React.FC<WalkControlsProps> = ({
   modelData,
@@ -33,6 +35,8 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
   const keysDown = useRef<Set<string>>(new Set());
   const isPointerLocked = useRef(false);
   const isDragging = useRef(false);
+  const activePointerId = useRef<number | null>(null);
+  const activePointerType = useRef<string>('mouse');
   const lastPointerPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const raycaster = useRef(new THREE.Raycaster());
   const lastRaycastTime = useRef(0);
@@ -182,6 +186,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     const handleClearKeys = () => {
       keysDown.current.clear();
       isDragging.current = false;
+      activePointerId.current = null;
     };
 
     const handleVisibilityChange = () => {
@@ -226,7 +231,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
       }
 
       domElement.focus?.();
-      if (!isPointerLocked.current) {
+      if (!isPointerLocked.current && activePointerType.current !== 'touch') {
         try {
           const promise = domElement.requestPointerLock?.();
           if (promise && typeof (promise as Promise<void>).catch === 'function') {
@@ -248,27 +253,34 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     // Drag to look fallback (when not locked, or touch drag)
     const handlePointerDown = (e: PointerEvent) => {
       if (useScreensStore.getState().interactiveScreenId) return;
-      if (!isPointerLocked.current) {
+      activePointerType.current = e.pointerType;
+      if (!isPointerLocked.current && activePointerId.current === null) {
         isDragging.current = true;
+        activePointerId.current = e.pointerId;
         lastPointerPos.current = { x: e.clientX, y: e.clientY };
       }
     };
 
     const handlePointerMove = (e: PointerEvent) => {
       if (useScreensStore.getState().interactiveScreenId) return;
+      // Ignore other fingers (e.g. the joystick) so they don't steer the camera
+      if (e.pointerId !== activePointerId.current) return;
       if (isDragging.current && !isPointerLocked.current) {
+        const sens = e.pointerType === 'touch' ? TOUCH_LOOK_SENSITIVITY : LOOK_SENSITIVITY;
         const dx = e.clientX - lastPointerPos.current.x;
         const dy = e.clientY - lastPointerPos.current.y;
         lastPointerPos.current = { x: e.clientX, y: e.clientY };
 
-        yaw.current -= dx * LOOK_SENSITIVITY;
-        pitch.current -= dy * LOOK_SENSITIVITY;
+        yaw.current -= dx * sens;
+        pitch.current -= dy * sens;
         pitch.current = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch.current));
       }
     };
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (e: PointerEvent) => {
+      if (e.pointerId !== activePointerId.current) return;
       isDragging.current = false;
+      activePointerId.current = null;
     };
 
     domElement.addEventListener('click', handleClick);
@@ -277,6 +289,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     domElement.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
 
     return () => {
       domElement.removeEventListener('click', handleClick);
@@ -285,6 +298,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
       domElement.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
 
       if (document.pointerLockElement === domElement) {
         document.exitPointerLock?.();
@@ -323,7 +337,11 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     if (isKeyActive(['KeyA', 'a'])) moveX -= 1;
     if (isKeyActive(['KeyD', 'd'])) moveX += 1;
 
-    const isRunning = isKeyActive(['ShiftLeft', 'ShiftRight', 'Shift']);
+    // Touch joystick adds an analog axis (clamped so keyboard + joystick can't exceed 1)
+    moveX = Math.max(-1, Math.min(1, moveX + touchInput.moveX));
+    moveZ = Math.max(-1, Math.min(1, moveZ - touchInput.moveY));
+
+    const isRunning = touchInput.run || isKeyActive(['ShiftLeft', 'ShiftRight', 'Shift']);
     const speed = isRunning ? RUN_SPEED : WALK_SPEED;
 
     const moveDelta = sc.moveDelta.set(0, 0, 0);
@@ -340,7 +358,8 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
         .addScaledVector(right, moveX)
         .normalize();
 
-      moveDelta.copy(dir).multiplyScalar(speed * dt);
+      const magnitude = Math.min(1, Math.hypot(moveX, moveZ));
+      moveDelta.copy(dir).multiplyScalar(speed * dt * magnitude);
     }
 
     // 5. Update position using collision solver
