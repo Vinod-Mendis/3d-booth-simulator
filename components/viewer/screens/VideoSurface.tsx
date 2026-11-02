@@ -27,15 +27,15 @@ function createStatusTexture(
 
   if (ctx) {
     // Dark background
-    ctx.fillStyle = isError ? '#1a0505' : '#090d16';
+    ctx.fillStyle = isError ? '#1a0505' : '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Accent header border
-    ctx.fillStyle = isError ? '#ef4444' : '#3b82f6';
+    ctx.fillStyle = isError ? '#ef4444' : '#fafafa';
     ctx.fillRect(0, 0, canvas.width, 8);
 
     // Icon & Title
-    ctx.fillStyle = isError ? '#f87171' : '#60a5fa';
+    ctx.fillStyle = isError ? '#f87171' : '#d4d4d8';
     ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

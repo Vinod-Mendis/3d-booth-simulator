@@ -107,7 +107,7 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
             type="button"
             onClick={handleApply}
             aria-label="Apply Web Page URL"
-            className="h-7 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition cursor-pointer shrink-0"
+            className="h-7 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black transition cursor-pointer shrink-0"
           >
             Apply
           </button>
@@ -156,7 +156,7 @@ const WebControlsSection: React.FC<WebControlsSectionProps> = ({
               aria-label={interactiveScreenId === screen.id ? 'Exit Screen Interaction' : 'Interact with Screen'}
               className={`w-full h-7 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] border transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 interactiveScreenId === screen.id
-                  ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                  ? 'bg-[var(--accent)] text-black border-[var(--accent)]'
                   : 'bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border-[var(--border-default)]'
               }`}
             >
@@ -599,7 +599,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
             aria-label={isEditing ? 'Switch to presentation view' : 'Switch to edit mode'}
             className={`px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium border transition cursor-pointer ${
               isEditing
-                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                ? 'bg-[var(--accent)] text-black border-[var(--accent)]'
                 : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
             }`}
           >
@@ -647,7 +647,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                 onClick={handleAddScreen}
                 aria-label="Add new screen"
                 title="Add new screen"
-                className="h-6 px-2 rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-[11px] font-medium flex items-center gap-1 transition cursor-pointer"
+                className="h-6 px-2 rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-[11px] font-medium flex items-center gap-1 transition cursor-pointer"
               >
                 <Plus className="w-3 h-3" />
                 <span>Add</span>
@@ -793,7 +793,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                     title="Move Gizmo"
                     className={`flex-1 h-6 text-[11px] font-medium rounded-[var(--radius-sm)] border transition flex items-center justify-center gap-1 cursor-pointer ${
                       gizmoMode === 'translate'
-                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                        ? 'bg-[var(--accent)] text-black border-[var(--accent)]'
                         : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
                     }`}
                   >
@@ -808,7 +808,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                     title="Rotate Gizmo"
                     className={`flex-1 h-6 text-[11px] font-medium rounded-[var(--radius-sm)] border transition flex items-center justify-center gap-1 cursor-pointer ${
                       gizmoMode === 'rotate'
-                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                        ? 'bg-[var(--accent)] text-black border-[var(--accent)]'
                         : 'bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
                     }`}
                   >
@@ -966,7 +966,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                     aria-pressed={selectedScreen.content.type === 'none'}
                     className={`h-6 text-[11px] font-medium rounded-[var(--radius-sm)] transition cursor-pointer ${
                       selectedScreen.content.type === 'none'
-                        ? 'bg-[var(--accent)] text-white'
+                        ? 'bg-[var(--accent)] text-black'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
@@ -978,7 +978,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                     aria-pressed={selectedScreen.content.type === 'video'}
                     className={`h-6 text-[11px] font-medium rounded-[var(--radius-sm)] transition cursor-pointer ${
                       selectedScreen.content.type === 'video'
-                        ? 'bg-[var(--accent)] text-white'
+                        ? 'bg-[var(--accent)] text-black'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
@@ -990,7 +990,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                     aria-pressed={selectedScreen.content.type === 'url'}
                     className={`h-6 text-[11px] font-medium rounded-[var(--radius-sm)] transition cursor-pointer ${
                       selectedScreen.content.type === 'url'
-                        ? 'bg-[var(--accent)] text-white'
+                        ? 'bg-[var(--accent)] text-black'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
@@ -1036,7 +1036,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                           <button
                             type="button"
                             onClick={handleApplyVideoUrl}
-                            className="h-7 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition cursor-pointer shrink-0"
+                            className="h-7 px-2 text-[11px] font-medium rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black transition cursor-pointer shrink-0"
                           >
                             Apply
                           </button>
@@ -1082,7 +1082,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                           <button
                             type="button"
                             onClick={() => togglePlayPause(selectedScreen.id)}
-                            className="h-6 px-2.5 rounded-[var(--radius-sm)] text-[11px] font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white flex items-center gap-1 transition cursor-pointer"
+                            className="h-6 px-2.5 rounded-[var(--radius-sm)] text-[11px] font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black flex items-center gap-1 transition cursor-pointer"
                           >
                             {activeVideoRuntime?.isPlaying ? (
                               <>
@@ -1115,7 +1115,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                                 onClick={() => handleFitChange('contain')}
                                 className={`flex-1 h-6 text-[10px] rounded-[var(--radius-sm)] border transition cursor-pointer ${
                                   selectedScreen.content.fit === 'contain'
-                                    ? 'bg-[var(--accent)] text-white border-[var(--accent)] font-medium'
+                                    ? 'bg-[var(--accent)] text-black border-[var(--accent)] font-medium'
                                     : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
                                 }`}
                               >
@@ -1126,7 +1126,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                                 onClick={() => handleFitChange('cover')}
                                 className={`flex-1 h-6 text-[10px] rounded-[var(--radius-sm)] border transition cursor-pointer ${
                                   selectedScreen.content.fit === 'cover'
-                                    ? 'bg-[var(--accent)] text-white border-[var(--accent)] font-medium'
+                                    ? 'bg-[var(--accent)] text-black border-[var(--accent)] font-medium'
                                     : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
                                 }`}
                               >
@@ -1142,7 +1142,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                               onClick={handleToggleLoop}
                               className={`w-full h-6 text-[10px] rounded-[var(--radius-sm)] border transition cursor-pointer ${
                                 selectedScreen.content.loop
-                                  ? 'bg-[var(--accent)] text-white border-[var(--accent)] font-medium'
+                                  ? 'bg-[var(--accent)] text-black border-[var(--accent)] font-medium'
                                   : 'bg-[var(--bg-app)] text-[var(--text-secondary)] border-[var(--border-default)] hover:text-[var(--text-primary)]'
                               }`}
                             >
@@ -1227,7 +1227,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => adoptTaggedScreen(s.name, modelData)}
-                      className="h-5 px-1.5 rounded-[var(--radius-sm)] text-[10px] font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition cursor-pointer shrink-0 flex items-center gap-1"
+                      className="h-5 px-1.5 rounded-[var(--radius-sm)] text-[10px] font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black transition cursor-pointer shrink-0 flex items-center gap-1"
                     >
                       <Check className="w-2.5 h-2.5" />
                       <span>Adopt</span>

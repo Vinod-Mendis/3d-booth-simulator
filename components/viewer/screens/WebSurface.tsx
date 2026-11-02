@@ -142,7 +142,7 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
             style={{
               width: `${pixelWidth}px`,
               height: `${pixelHeight}px`,
-              backgroundColor: '#090d16',
+              backgroundColor: '#0a0a0a',
               color: '#f87171',
               display: 'flex',
               flexDirection: 'column',
@@ -212,12 +212,12 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  backgroundColor: '#0b0f19',
+                  backgroundColor: '#0a0a0a',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#38bdf8',
+                  color: '#e4e4e7',
                   fontFamily: 'sans-serif',
                   pointerEvents: 'none',
                 }}
@@ -226,14 +226,14 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
                   style={{
                     width: '48px',
                     height: '48px',
-                    border: '4px solid rgba(56, 189, 248, 0.2)',
-                    borderTopColor: '#38bdf8',
+                    border: '4px solid rgba(255,255,255,0.15)',
+                    borderTopColor: '#e4e4e7',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite',
                     marginBottom: '16px',
                   }}
                 />
-                <p style={{ fontSize: '18px', color: '#e2e8f0', margin: 0, fontWeight: 500 }}>
+                <p style={{ fontSize: '18px', color: '#e4e4e7', margin: 0, fontWeight: 500 }}>
                   Loading {screen.name}...
                 </p>
               </div>
@@ -247,7 +247,7 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
                   bottom: '24px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                  backgroundColor: 'rgba(18,18,18,0.92)',
                   backdropFilter: 'blur(12px)',
                   border: '1px solid rgba(148, 163, 184, 0.3)',
                   borderRadius: '12px',
@@ -272,8 +272,8 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
-                    backgroundColor: '#0284c7',
-                    color: '#ffffff',
+                    backgroundColor: '#fafafa',
+                    color: '#0a0a0a',
                     padding: '6px 14px',
                     borderRadius: '8px',
                     textDecoration: 'none',

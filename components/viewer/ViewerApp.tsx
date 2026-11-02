@@ -350,7 +350,7 @@ export const ViewerApp: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setInteractiveScreenId(null)}
-                className="h-6 px-2 rounded-[var(--radius-sm)] font-medium text-[11px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition cursor-pointer flex items-center gap-1"
+                className="h-6 px-2 rounded-[var(--radius-sm)] font-medium text-[11px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black transition cursor-pointer flex items-center gap-1"
               >
                 <span>Exit screen</span>
                 <span className="text-[10px] opacity-75">(or click canvas)</span>

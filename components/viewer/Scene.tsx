@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, PerformanceMonitor } from '@react-three/drei';
 import * as THREE from 'three';
 import { LoadedModelData, ViewerMode } from '@/lib/types';
 import { ModelRoot } from './ModelRoot';
@@ -150,9 +150,11 @@ export const Scene: React.FC<SceneProps> = ({
   const controlsRef = useRef<OrbitControlsInstance | null>(null);
   const [groundMesh, setGroundMesh] = useState<THREE.Mesh | null>(null);
   const [isGizmoDragging, setIsGizmoDragging] = useState(false);
+  // Adaptive resolution: drops render resolution on weak GPUs (e.g. integrated graphics), raises it when there is headroom
+  const [dpr, setDpr] = useState(1.25);
 
-  const gridMain = '#38383f';
-  const gridSub = '#27272a';
+  const gridMain = '#2e2e2e';
+  const gridSub = '#1a1a1a';
 
   return (
     <div
@@ -160,6 +162,7 @@ export const Scene: React.FC<SceneProps> = ({
     >
       <Canvas
         shadows="soft"
+        dpr={dpr}
         camera={{ position: [0, 3, 14], fov: 50 }}
         gl={{
           antialias: true,
@@ -171,6 +174,13 @@ export const Scene: React.FC<SceneProps> = ({
           mode === 'walk' ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
         }`}
       >
+        <PerformanceMonitor
+          onIncline={() => setDpr(Math.min(window.devicePixelRatio || 1, 1.75))}
+          onDecline={() => setDpr(1)}
+          flipflops={3}
+          onFallback={() => setDpr(1)}
+        />
+
         <CameraBridge
           onCameraReady={onCameraReady}
           controlsRef={controlsRef}

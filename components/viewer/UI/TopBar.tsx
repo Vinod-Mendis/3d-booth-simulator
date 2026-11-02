@@ -81,7 +81,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             title="Orbit Mode [1]"
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] text-[12px] font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
               mode === 'orbit'
-                ? 'bg-[var(--accent)] text-white'
+                ? 'bg-[var(--accent)] text-black'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'
             }`}
           >
@@ -101,7 +101,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             title="Walk Mode [2]"
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] text-[12px] font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
               mode === 'walk'
-                ? 'bg-[var(--accent)] text-white'
+                ? 'bg-[var(--accent)] text-black'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'
             }`}
           >
@@ -159,7 +159,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={onOpenFile}
           aria-label="Open model [Ctrl+O]"
           title="Open model [Ctrl+O]"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-[12px] font-medium transition cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-[12px] font-medium transition cursor-pointer"
         >
           <FolderOpen className="w-3.5 h-3.5" />
           <span>Open File</span>

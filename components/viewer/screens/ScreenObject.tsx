@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { ThreeEvent } from '@react-three/fiber';
 import { Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -29,11 +29,11 @@ function createPlaceholderTexture(name: string, width: number, height: number, a
 
   if (ctx) {
     // Neutral dark background
-    ctx.fillStyle = '#18181b';
+    ctx.fillStyle = '#0f0f0f';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Subtle 1px border
-    ctx.strokeStyle = '#38383f';
+    ctx.strokeStyle = '#2a2a2a';
     ctx.lineWidth = 4;
     ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
 
@@ -46,13 +46,13 @@ function createPlaceholderTexture(name: string, width: number, height: number, a
 
     // Dimensions
     ctx.font = '500 28px monospace';
-    ctx.fillStyle = '#60a5fa';
+    ctx.fillStyle = '#d4d4d8';
     const dimText = `${width.toFixed(2)} × ${height.toFixed(2)} m (${aspect})`;
     ctx.fillText(dimText, canvas.width / 2, canvas.height / 2 + 20);
 
     // Subtitle note
     ctx.font = '400 18px system-ui, -apple-system, sans-serif';
-    ctx.fillStyle = '#8b8b95';
+    ctx.fillStyle = '#8a8a8a';
     ctx.fillText('Custom Display • No Content', canvas.width / 2, canvas.height / 2 + 64);
   }
 
@@ -71,10 +71,10 @@ function createWebPlaceholderTexture(name: string, url: string, isLive: boolean)
   const ctx = canvas.getContext('2d');
 
   if (ctx) {
-    ctx.fillStyle = '#18181b';
+    ctx.fillStyle = '#0f0f0f';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = '#38383f';
+    ctx.strokeStyle = '#2a2a2a';
     ctx.lineWidth = 4;
     ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
 
@@ -85,13 +85,13 @@ function createWebPlaceholderTexture(name: string, url: string, isLive: boolean)
     ctx.fillText(name, canvas.width / 2, canvas.height / 2 - 36);
 
     ctx.font = '500 22px monospace';
-    ctx.fillStyle = '#60a5fa';
+    ctx.fillStyle = '#d4d4d8';
     const displayUrl = url.length > 50 ? url.substring(0, 47) + '...' : url;
     ctx.fillText(displayUrl || 'No Web URL assigned', canvas.width / 2, canvas.height / 2 + 15);
 
     if (!isLive) {
       ctx.font = '500 18px system-ui, -apple-system, sans-serif';
-      ctx.fillStyle = '#8b8b95';
+      ctx.fillStyle = '#8a8a8a';
       ctx.fillText('Not live (occluded or > 25m)', canvas.width / 2, canvas.height / 2 + 60);
     }
   }
@@ -134,6 +134,10 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
     const url = screen.content.type === 'url' ? screen.content.url : '';
     return createWebPlaceholderTexture(screen.name, url, isLive);
   }, [screen.name, screen.content, isLive]);
+
+  // Free GPU memory when placeholder textures are replaced or the screen unmounts
+  useEffect(() => () => placeholderTexture.dispose(), [placeholderTexture]);
+  useEffect(() => () => webPlaceholderTexture.dispose(), [webPlaceholderTexture]);
 
   // Track pointer movement between down and up for strict click selection (< 4px)
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
@@ -233,7 +237,7 @@ export const ScreenObject: React.FC<ScreenObjectProps> = ({
       {isSelected && isEditing && (
         <Line
           points={outlinePoints}
-          color="#3b82f6"
+          color="#fafafa"
           lineWidth={2}
           worldUnits={false}
         />

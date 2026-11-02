@@ -36,7 +36,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             type="button"
             onClick={onOpenFile}
             aria-label="Choose 3D model file from disk [Ctrl+O]"
-            className="flex-1 h-8 px-3 rounded-[var(--radius-sm)] text-[12px] font-medium text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] transition flex items-center justify-center gap-1.5 cursor-pointer"
+            className="flex-1 h-8 px-3 rounded-[var(--radius-sm)] text-[12px] font-medium text-black bg-[var(--accent)] hover:bg-[var(--accent-hover)] transition flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <FolderOpen className="w-3.5 h-3.5" />
             <span>Choose File</span>
