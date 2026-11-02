@@ -88,3 +88,14 @@ a:focus-visible {
   outline: none;
   box-shadow: 0 0 0 1px var(--border-focus);
 }
+
+/* Dot-matrix loader: outward ripple, staggered by distance from origin */
+@keyframes dmx-ripple {
+  0%, 100% { opacity: 0.18; transform: scale(0.7); }
+  30% { opacity: 1; transform: scale(1.1); }
+  60% { opacity: 0.35; transform: scale(0.85); }
+}
+.dmx-ripple {
+  animation: dmx-ripple var(--dmx-duration, 1.6s) ease-in-out infinite;
+  animation-delay: var(--dmx-delay, 0s);
+}
