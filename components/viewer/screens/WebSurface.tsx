@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Html } from '@react-three/drei';
 import { ScreenData } from '@/lib/types';
 import { useScreensStore } from '@/lib/screensStore';
+import { resolveEmbedUrl } from '@/lib/embedUrl';
 
 interface WebSurfaceProps {
   screen: ScreenData;
@@ -43,12 +44,16 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
 
 
   // Client-side same-origin and mixed-content validation computed purely on client
+  const resolved = useMemo(() => resolveEmbedUrl(rawUrl), [rawUrl]);
+  const embedSrc = resolved.src;
+
   const clientSecurityError = useMemo(() => {
     if (!rawUrl || typeof window === 'undefined') {
       return null;
     }
+    if (resolved.blockedReason) return resolved.blockedReason;
     try {
-      const parsed = new URL(rawUrl, window.location.href);
+      const parsed = new URL(embedSrc, window.location.href);
 
       // 1. Protocol check
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
@@ -72,7 +77,7 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
     } catch {
       return 'Invalid URL format.';
     }
-  }, [rawUrl]);
+  }, [rawUrl, embedSrc, resolved.blockedReason]);
 
   // Token representing the current URL and reload iteration
   const currentToken = `${rawUrl}-${reloadCounter}`;
@@ -190,7 +195,7 @@ export const WebSurface: React.FC<WebSurfaceProps> = ({ screen }) => {
             <iframe
               ref={iframeRef}
               key={`${rawUrl}-${reloadCounter}`}
-              src={rawUrl || undefined}
+              src={embedSrc || undefined}
               title={screen.name}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               allow="fullscreen; autoplay; clipboard-write"
