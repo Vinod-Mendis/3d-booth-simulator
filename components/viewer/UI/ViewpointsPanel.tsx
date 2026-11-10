@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import * as THREE from 'three';
 import { ChevronLeft, ChevronRight, Play, Plus, Square, Trash2 } from 'lucide-react';
 import type { ViewerMode } from '@/lib/types';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { Viewpoint, useViewpointsStore } from '@/lib/viewpointsStore';
 
 interface ViewpointsPanelProps {
@@ -129,17 +131,20 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
 
   return (
     <div className="font-sans text-[12px]">
-      {isTouring && (
+      {isTouring &&
+        createPortal(
+        // Portal: the sidebar is hidden during a tour, which would hide the button with it
         <button
           type="button"
           onClick={() => setIsTouring(false)}
           aria-label="Stop tour"
           title="Stop tour [Esc]"
-          className="fixed top-14 left-3 z-50 flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium shadow-md transition cursor-pointer"
+          className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium shadow-md transition cursor-pointer"
         >
           <Square className="w-3 h-3" />
           <span>Stop tour</span>
-        </button>
+        </button>,
+        document.body
       )}
 
       <>
@@ -191,20 +196,14 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
                 <Play className="w-3 h-3" />
                 <span>Auto-tour</span>
               </button>
-              <label className="sr-only" htmlFor="tour-dwell">Seconds per view</label>
-              <select
-                id="tour-dwell"
+              <Dropdown
                 value={dwell}
-                onChange={(e) => setDwell(Number(e.target.value))}
-                title="Pause on each view"
-                className="h-6 px-1 text-[11px] font-mono rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-secondary)] cursor-pointer"
-              >
-                {DWELL_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}s
-                  </option>
-                ))}
-              </select>
+                options={DWELL_OPTIONS.map((n) => ({ value: n, label: `${n}s` }))}
+                onChange={setDwell}
+                ariaLabel="Seconds per view"
+                title="Time spent on each view"
+                className="self-stretch"
+              />
             </div>
 
             {viewpoints.length === 0 ? (
