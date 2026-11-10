@@ -6,6 +6,7 @@ import { Box } from 'lucide-react';
 import { LoadedModelData, ViewerMode, UnitType, ToastMessage } from '@/lib/types';
 import { loadSampleBoothData, loadModelFiles, disposeHierarchy } from '@/lib/loadModel';
 import { getUnitScale } from '@/lib/units';
+import { composeScreenshot, downloadBlob } from '@/lib/screenshot';
 import { useScreensStore } from '@/lib/screensStore';
 import { Scene } from './Scene';
 import { TopBar } from './UI/TopBar';
@@ -27,6 +28,7 @@ export const ViewerApp: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [resetViewTrigger, setResetViewTrigger] = useState(0);
+  const [screenshotLogo, setScreenshotLogo] = useState(true);
 
   const focusedVideoScreenId = useScreensStore((s) => s.focusedVideoScreenId);
   const videoRuntime = useScreensStore((s) => s.videoRuntime);
@@ -41,6 +43,8 @@ export const ViewerApp: React.FC = () => {
   const activeModelRef = useRef<LoadedModelData | null>(null);
   const cameraRef = useRef<THREE.Camera | null>(null);
   const orbitTargetRef = useRef<THREE.Vector3 | null>(null);
+  const captureRef = useRef<(() => HTMLCanvasElement) | null>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   // Sync screens store when model loads
   useEffect(() => {
@@ -123,6 +127,25 @@ export const ViewerApp: React.FC = () => {
     setResetViewTrigger((c) => c + 1);
   };
 
+  // Save the current view as a PNG
+  const handleScreenshot = async () => {
+    const capture = captureRef.current;
+    if (!capture || !activeModelRef.current) return;
+    try {
+      const canvas = capture();
+      const bg = viewportRef.current
+        ? getComputedStyle(viewportRef.current).backgroundColor
+        : '#0a0a0a';
+      const blob = await composeScreenshot(canvas, bg, screenshotLogo);
+      const base = activeModelRef.current.name.replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '-');
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      downloadBlob(blob, `${base || 'booth'}-${stamp}.png`);
+      addToast('success', 'Screenshot saved');
+    } catch (error: unknown) {
+      addToast('error', error instanceof Error ? error.message : 'Could not save screenshot');
+    }
+  };
+
   // Load sample booth
   const handleTrySample = () => {
     if (activeModelRef.current) {
@@ -144,6 +167,11 @@ export const ViewerApp: React.FC = () => {
       fileInputRef.current.click();
     }
   };
+
+  const handleScreenshotRef = useRef(handleScreenshot);
+  useEffect(() => {
+    handleScreenshotRef.current = handleScreenshot;
+  });
 
   // Global Keyboard Shortcuts (Ctrl+O, 1 for Orbit, 2 for Walk, R for Reset View in Orbit)
   useEffect(() => {
@@ -176,6 +204,12 @@ export const ViewerApp: React.FC = () => {
       // 2: Walk mode
       if (e.key === '2' && modelData) {
         setMode('walk');
+        return;
+      }
+
+      // P: Screenshot
+      if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && modelData) {
+        handleScreenshotRef.current();
         return;
       }
 
@@ -289,6 +323,9 @@ export const ViewerApp: React.FC = () => {
         onUnitChange={handleUnitChange}
         onResetView={handleResetView}
         onOpenFile={handleOpenFile}
+        onScreenshot={handleScreenshot}
+        screenshotLogo={screenshotLogo}
+        onToggleScreenshotLogo={() => setScreenshotLogo((v) => !v)}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         isTouch={isTouch}
@@ -297,7 +334,7 @@ export const ViewerApp: React.FC = () => {
       {/* Main Workspace: Flex row containing Canvas & Docked Sidebar */}
       <div className="flex-1 flex flex-row min-h-0 relative overflow-hidden">
         {/* 3D Scene Viewport Container: Fills remaining space, overflow-hidden keeps Drei Html inside */}
-        <div className="flex-1 min-w-0 relative h-full overflow-hidden bg-[var(--bg-canvas)]">
+        <div ref={viewportRef} className="flex-1 min-w-0 relative h-full overflow-hidden bg-[var(--bg-canvas)]">
           <Scene
             modelData={modelData}
             mode={mode}
@@ -307,6 +344,7 @@ export const ViewerApp: React.FC = () => {
               cameraRef.current = cam;
             }}
             orbitTargetRef={orbitTargetRef}
+            captureRef={captureRef}
           />
 
           {/* Empty State Card */}

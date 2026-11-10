@@ -21,6 +21,7 @@ interface SceneProps {
   resetViewTrigger: number;
   onCameraReady?: (camera: THREE.Camera) => void;
   orbitTargetRef?: React.MutableRefObject<THREE.Vector3 | null>;
+  captureRef?: React.MutableRefObject<(() => HTMLCanvasElement) | null>;
 }
 
 function CameraBridge({
@@ -43,6 +44,31 @@ function CameraBridge({
       orbitTargetRef.current = controlsRef.current.target;
     }
   });
+
+  return null;
+}
+
+/**
+ * Exposes a synchronous "render now and hand back the canvas" function so screenshots
+ * work without preserveDrawingBuffer.
+ */
+function CaptureBridge({
+  captureRef,
+}: {
+  captureRef?: React.MutableRefObject<(() => HTMLCanvasElement) | null>;
+}) {
+  const { gl, scene, camera } = useThree();
+
+  useEffect(() => {
+    if (!captureRef) return;
+    captureRef.current = () => {
+      gl.render(scene, camera);
+      return gl.domElement;
+    };
+    return () => {
+      captureRef.current = null;
+    };
+  }, [gl, scene, camera, captureRef]);
 
   return null;
 }
@@ -291,6 +317,7 @@ export const Scene: React.FC<SceneProps> = ({
   resetViewTrigger,
   onCameraReady,
   orbitTargetRef,
+  captureRef,
 }) => {
   const isDark = theme === 'dark';
   const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
@@ -335,6 +362,8 @@ export const Scene: React.FC<SceneProps> = ({
           controlsRef={controlsRef}
           orbitTargetRef={orbitTargetRef}
         />
+
+        <CaptureBridge captureRef={captureRef} />
 
         <CameraController
           modelData={modelData}

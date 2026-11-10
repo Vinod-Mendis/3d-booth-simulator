@@ -10,6 +10,7 @@ import {
   PanelRightOpen,
   Maximize,
   Minimize,
+  Camera,
 } from 'lucide-react';
 import { ViewerMode, UnitType, LoadedModelData } from '@/lib/types';
 import { getUnitDisplayLabel } from '@/lib/units';
@@ -23,6 +24,9 @@ interface TopBarProps {
   onUnitChange: (unit: UnitType) => void;
   onResetView: () => void;
   onOpenFile: () => void;
+  onScreenshot: () => void;
+  screenshotLogo: boolean;
+  onToggleScreenshotLogo: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   isTouch?: boolean;
@@ -36,6 +40,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   onUnitChange,
   onResetView,
   onOpenFile,
+  onScreenshot,
+  screenshotLogo,
+  onToggleScreenshotLogo,
   isSidebarOpen,
   onToggleSidebar,
   isTouch = false,
@@ -135,6 +142,42 @@ export const TopBar: React.FC<TopBarProps> = ({
             {mode === 'orbit' ? 'Reset View' : 'Entrance'}
           </span>
         </button>
+
+        {/* Screenshot: PNG of the current view, optionally stamped with the logo */}
+        <div className="flex items-center">
+          <button
+            type="button"
+            aria-label="Save screenshot [P]"
+            disabled={!hasModel}
+            onClick={(e) => {
+              onScreenshot();
+              e.currentTarget.blur();
+            }}
+            title="Save screenshot [P]"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-l-[var(--radius-sm)] text-[12px] font-medium border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Screenshot</span>
+          </button>
+          <button
+            type="button"
+            aria-pressed={screenshotLogo}
+            aria-label="Include logo in screenshot"
+            disabled={!hasModel}
+            onClick={(e) => {
+              onToggleScreenshotLogo();
+              e.currentTarget.blur();
+            }}
+            title="Include Pre-Show logo in screenshot"
+            className={`px-1.5 py-1 -ml-px rounded-r-[var(--radius-sm)] text-[11px] font-medium border border-[var(--border-default)] disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer ${
+              screenshotLogo
+                ? 'bg-[var(--accent)] text-black'
+                : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'
+            }`}
+          >
+            Logo
+          </button>
+        </div>
 
         {/* Model Units Selector */}
         <div className="flex items-center gap-1">
