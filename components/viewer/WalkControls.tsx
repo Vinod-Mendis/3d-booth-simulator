@@ -20,6 +20,13 @@ const RUN_SPEED = 5.0; // 5.0 m/s
 const TURN_SPEED = 2.0; // 2.0 rad/s
 const LOOK_SENSITIVITY = 0.0022;
 const TOUCH_LOOK_SENSITIVITY = 0.004;
+const EYE_HEIGHT = 1.65; // metres above feet
+// Fly-in duration scales with travel distance, clamped to this range (seconds)
+const TRANSITION_MIN = 0.7;
+const TRANSITION_MAX = 1.4;
+
+const easeInOutCubic = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
 export const WalkControls: React.FC<WalkControlsProps> = ({
   modelData,
@@ -62,6 +69,20 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     right: new THREE.Vector3(),
     dir: new THREE.Vector3(),
     center: new THREE.Vector2(0, 0),
+  });
+
+  // Camera fly-in from the previous view (e.g. orbit) to the walk spawn point
+  const transition = useRef({
+    active: false,
+    elapsed: 0,
+    duration: 1,
+    fromPos: new THREE.Vector3(),
+    toPos: new THREE.Vector3(),
+    toQuat: new THREE.Quaternion(),
+    // Look-at point glides alongside the camera so it dollies forward instead of swinging round
+    fromTarget: new THREE.Vector3(),
+    toTarget: new THREE.Vector3(),
+    target: new THREE.Vector3(),
   });
 
   // E key listener for video play/pause or web screen interaction
@@ -128,14 +149,42 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     return new THREE.Vector3(0, 0, spawnZ);
   });
 
-  // Reset to entrance/spawn
+  // Reset to entrance/spawn, gliding the camera there from wherever it currently is
   const resetToSpawn = useRef(() => {
     const spawn = calculateSpawn.current();
     feetPos.current.copy(spawn);
     yaw.current = 0; // Facing -Z
     pitch.current = 0;
-    camera.position.set(spawn.x, spawn.y + 1.65, spawn.z);
-    camera.quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'YXZ'));
+
+    const tr = transition.current;
+    tr.toPos.set(spawn.x, spawn.y + EYE_HEIGHT, spawn.z);
+    tr.toQuat.setFromEuler(new THREE.Euler(0, 0, 0, 'YXZ'));
+
+    const distance = camera.position.distanceTo(tr.toPos);
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduceMotion || distance < 0.01) {
+      tr.active = false;
+      camera.position.copy(tr.toPos);
+      camera.quaternion.copy(tr.toQuat);
+      return;
+    }
+
+    // End: a point straight ahead (-Z) of the spawn eye, roughly level with the booth centre
+    tr.toTarget.copy(tr.toPos).add(new THREE.Vector3(0, 0, -Math.max(tr.toPos.z, 2)));
+    // Start: whatever the camera is looking at now, at a similar distance
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    tr.fromTarget
+      .copy(camera.position)
+      .addScaledVector(forward, Math.max(camera.position.distanceTo(tr.toTarget), 1));
+
+    tr.fromPos.copy(camera.position);
+    tr.elapsed = 0;
+    tr.duration = THREE.MathUtils.clamp(distance / 12, TRANSITION_MIN, TRANSITION_MAX);
+    tr.active = true;
   });
 
   // Initialize spawn on mount or when resetTrigger changes
@@ -308,6 +357,26 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
 
   // Frame update loop for movement and collision (priority -1 to run before Drei <Html> transform)
   useFrame((state, rawDelta) => {
+    // Fly-in transition: input is ignored until the camera lands at the spawn point
+    const tr = transition.current;
+    if (tr.active) {
+      tr.elapsed += Math.min(rawDelta, 0.1);
+      const t = Math.min(tr.elapsed / tr.duration, 1);
+      const k = easeInOutCubic(t);
+      camera.position.lerpVectors(tr.fromPos, tr.toPos, k);
+      tr.target.lerpVectors(tr.fromTarget, tr.toTarget, k);
+      camera.lookAt(tr.target);
+      camera.updateMatrixWorld(true);
+      if (t >= 1) {
+        tr.active = false;
+        camera.quaternion.copy(tr.toQuat);
+        // Discard any look input that arrived mid-flight so the hand-off is seamless
+        yaw.current = 0;
+        pitch.current = 0;
+      }
+      return;
+    }
+
     // If interacting with a screen, pause all walk movements and look rotation
     if (interactiveScreenId) {
       return;
@@ -376,7 +445,7 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     feetPos.current.copy(newPosition);
 
     // 6. Camera sits 1.65m above feet
-    camera.position.set(feetPos.current.x, feetPos.current.y + 1.65, feetPos.current.z);
+    camera.position.set(feetPos.current.x, feetPos.current.y + EYE_HEIGHT, feetPos.current.z);
     // Explicitly update camera matrix world synchronously so Drei <Html> reads the current frame
     camera.updateMatrixWorld(true);
 

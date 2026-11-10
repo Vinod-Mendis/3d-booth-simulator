@@ -1,4 +1,4 @@
-# 3D Booth Viewer
+# Pre-Show
 
 An interactive 3D booth and stage viewer built with **Next.js**, **React Three Fiber**, **Three.js**, and **Tailwind CSS**. Designed for client design reviews, spatial planning, and interactive booth presentations with custom video displays and live web surfaces.
 

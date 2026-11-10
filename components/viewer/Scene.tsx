@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, PerformanceMonitor } from '@react-three/drei';
 import * as THREE from 'three';
 import { LoadedModelData, ViewerMode } from '@/lib/types';
@@ -60,6 +60,18 @@ function CameraController({
   controlsRef: React.RefObject<OrbitControlsInstance | null>;
 }) {
   const { camera } = useThree();
+  const prevModelRef = useRef<LoadedModelData | null>(null);
+  const transition = useRef({
+    active: false,
+    elapsed: 0,
+    duration: 1,
+    fromPos: new THREE.Vector3(),
+    toPos: new THREE.Vector3(),
+    fromTarget: new THREE.Vector3(),
+    toTarget: new THREE.Vector3(),
+    target: new THREE.Vector3(),
+    restoreEnabled: true,
+  });
 
   useEffect(() => {
     if (!modelData || mode !== 'orbit') return;
@@ -72,15 +84,68 @@ function CameraController({
     const camY = Math.max(height * 0.65, 2.8);
     const camZ = dist;
 
-    camera.position.set(0, camY, camZ);
-    camera.lookAt(0, targetY, 0);
-    camera.updateProjectionMatrix();
+    const tr = transition.current;
+    const controls = controlsRef.current;
+    tr.toPos.set(0, camY, camZ);
+    tr.toTarget.set(0, targetY, 0);
 
-    if (controlsRef.current) {
-      controlsRef.current.target.set(0, targetY, 0);
-      controlsRef.current.update();
+    // Snap on a freshly loaded model; glide when coming from walk mode or resetting the view
+    const isNewModel = prevModelRef.current !== modelData;
+    prevModelRef.current = modelData;
+    const distance = camera.position.distanceTo(tr.toPos);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (isNewModel || reduceMotion || distance < 0.01 || !controls) {
+      if (tr.active && controls) controls.enabled = tr.restoreEnabled;
+      tr.active = false;
+      camera.position.copy(tr.toPos);
+      camera.lookAt(tr.toTarget);
+      if (controls) {
+        controls.target.copy(tr.toTarget);
+        controls.update();
+      }
+      return;
     }
+
+    // Start the look-at point straight ahead of the camera so orientation doesn't jump
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    tr.fromTarget
+      .copy(camera.position)
+      .addScaledVector(forward, Math.max(camera.position.distanceTo(tr.toTarget), 1));
+    tr.fromPos.copy(camera.position);
+    tr.elapsed = 0;
+    tr.duration = THREE.MathUtils.clamp(distance / 12, 0.7, 1.4);
+    if (!tr.active) tr.restoreEnabled = controls.enabled;
+    tr.active = true;
   }, [modelData, mode, resetViewTrigger, camera, controlsRef]);
+
+  // Runs before OrbitControls' own frame update (subscribed earlier), so disabling it here takes effect this frame
+  useFrame((_, rawDelta) => {
+    const tr = transition.current;
+    if (!tr.active) return;
+    const controls = controlsRef.current;
+    if (!controls) {
+      tr.active = false;
+      return;
+    }
+    controls.enabled = false;
+
+    tr.elapsed += Math.min(rawDelta, 0.1);
+    const t = Math.min(tr.elapsed / tr.duration, 1);
+    const k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; // easeInOutCubic
+
+    camera.position.lerpVectors(tr.fromPos, tr.toPos, k);
+    tr.target.lerpVectors(tr.fromTarget, tr.toTarget, k);
+    camera.lookAt(tr.target);
+    controls.target.copy(tr.target);
+
+    if (t >= 1) {
+      tr.active = false;
+      controls.enabled = tr.restoreEnabled;
+      controls.update();
+    }
+  });
 
   return null;
 }

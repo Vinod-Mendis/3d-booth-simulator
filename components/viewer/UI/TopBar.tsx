@@ -2,7 +2,6 @@
 
 import React from 'react';
 import {
-  Box,
   Rotate3d,
   Footprints,
   RotateCcw,
@@ -51,8 +50,9 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Left: App Title & Model Badge */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 font-semibold text-[13px] tracking-tight">
-          <Box className="w-4 h-4 text-[var(--accent)]" />
-          <span className="hidden sm:inline">BoothViewer</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo.svg" alt="Pre-Show logo" className="h-3.5 w-auto" />
+          <span className="hidden sm:inline">Pre-Show</span>
         </div>
         {hasModel && (
           <>
