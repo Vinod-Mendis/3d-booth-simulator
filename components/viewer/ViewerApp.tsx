@@ -16,6 +16,7 @@ import { HintChips } from './UI/HintChips';
 import { LightingPanel } from './UI/LightingPanel';
 import { Toaster } from './UI/Toaster';
 import { ViewpointsPanel } from './UI/ViewpointsPanel';
+import { Sidebar, SidebarTab } from './UI/Sidebar';
 import { useViewpointsStore } from '@/lib/viewpointsStore';
 import { ScreensPanel } from './screens/ScreensPanel';
 import { TouchControls, useIsTouchDevice } from './UI/TouchControls';
@@ -25,6 +26,7 @@ export const ViewerApp: React.FC = () => {
   const [mode, setMode] = useState<ViewerMode>('orbit');
   const [selectedUnit, setSelectedUnit] = useState<UnitType>('auto');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('screens');
   const [isDragging, setIsDragging] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [resetViewTrigger, setResetViewTrigger] = useState(0);
@@ -355,19 +357,6 @@ export const ViewerApp: React.FC = () => {
             />
           )}
 
-          {/* Top-right Lighting Controls */}
-          {modelData && <LightingPanel />}
-
-          {/* Top-left Saved Viewpoints */}
-          {modelData && (
-            <ViewpointsPanel
-              mode={mode}
-              onModeChange={setMode}
-              cameraRef={cameraRef}
-              orbitTargetRef={orbitTargetRef}
-            />
-          )}
-
           {/* Bottom-left Info Panel */}
           <InfoPanel modelData={modelData} />
 
@@ -437,16 +426,33 @@ export const ViewerApp: React.FC = () => {
           )}
         </div>
 
-        {/* Docked Right Sidebar: Screens Management & Inspector */}
+        {/* Docked Right Sidebar: tabbed Screens / Lighting / Views */}
         {modelData && (
-          <ScreensPanel
-            modelData={modelData}
-            mode={mode}
-            onToast={(type, message) => addToast(type, message)}
-            orbitTargetRef={orbitTargetRef}
-            cameraRef={cameraRef}
-            isCollapsed={!isSidebarOpen}
-            onToggleCollapse={() => setIsSidebarOpen(false)}
+          <Sidebar
+            isOpen={isSidebarOpen}
+            activeTab={sidebarTab}
+            onTabChange={setSidebarTab}
+            panels={{
+              screens: (
+                <ScreensPanel
+                  modelData={modelData}
+                  mode={mode}
+                  onToast={(type, message) => addToast(type, message)}
+                  orbitTargetRef={orbitTargetRef}
+                  cameraRef={cameraRef}
+                />
+              ),
+              lighting: <LightingPanel />,
+              views: (
+                <ViewpointsPanel
+                  mode={mode}
+                  onModeChange={setMode}
+                  cameraRef={cameraRef}
+                  orbitTargetRef={orbitTargetRef}
+                  onTourStart={() => setIsSidebarOpen(false)}
+                />
+              ),
+            }}
           />
         )}
       </div>

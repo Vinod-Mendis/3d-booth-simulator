@@ -23,7 +23,6 @@ import {
   Download,
   Tv,
   Check,
-  PanelRightClose,
 } from 'lucide-react';
 import {
   ScreenData,
@@ -46,8 +45,6 @@ interface ScreensPanelProps {
   onToast: (type: 'info' | 'success' | 'error', message: string) => void;
   orbitTargetRef?: React.RefObject<THREE.Vector3 | null>;
   cameraRef?: React.RefObject<THREE.Camera | null>;
-  isCollapsed?: boolean;
-  onToggleCollapse?: () => void;
 }
 
 interface WebControlsSectionProps {
@@ -222,8 +219,6 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   onToast,
   orbitTargetRef,
   cameraRef,
-  isCollapsed = false,
-  onToggleCollapse,
 }) => {
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
@@ -265,7 +260,7 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   const togglePlayPause = useScreensStore((s) => s.togglePlayPause);
   const setVideoRuntime = useScreensStore((s) => s.setVideoRuntime);
 
-  if (!modelData || isCollapsed) return null;
+  if (!modelData) return null;
 
   const selectedScreen = screens.find((s) => s.id === selectedScreenId) || null;
 
@@ -568,9 +563,9 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
   };
 
   return (
-    <aside
+    <div
       aria-label="Screens & Display Inspector"
-      className="w-[300px] max-md:absolute max-md:right-0 max-md:inset-y-0 max-md:w-[min(300px,88vw)] h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)] text-[var(--text-primary)] select-none shrink-0 z-20 overflow-hidden"
+      className="h-full min-h-0 flex flex-col text-[var(--text-primary)] select-none overflow-hidden"
     >
       <input
         ref={importFileInputRef}
@@ -605,19 +600,6 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
           >
             {isEditing ? 'Edit' : 'View'}
           </button>
-
-          {/* Close Sidebar Toggle */}
-          {onToggleCollapse && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              aria-label="Collapse inspector sidebar"
-              title="Collapse inspector sidebar"
-              className="p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition cursor-pointer"
-            >
-              <PanelRightClose className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
       </div>
 
@@ -1259,6 +1241,6 @@ export const ScreensPanel: React.FC<ScreensPanelProps> = ({
           <span>Import Layout</span>
         </button>
       </div>
-    </aside>
+    </div>
   );
 };

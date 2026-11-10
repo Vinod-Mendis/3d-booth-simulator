@@ -2,11 +2,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Bookmark, ChevronLeft, ChevronRight, Play, Plus, Square, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Plus, Square, Trash2 } from 'lucide-react';
 import type { ViewerMode } from '@/lib/types';
 import { Viewpoint, useViewpointsStore } from '@/lib/viewpointsStore';
 
 interface ViewpointsPanelProps {
+  /** Called when a tour starts so the host can clear the UI away */
+  onTourStart?: () => void;
   mode: ViewerMode;
   onModeChange: (mode: ViewerMode) => void;
   cameraRef: React.MutableRefObject<THREE.Camera | null>;
@@ -20,12 +22,12 @@ const DWELL_OPTIONS = [2, 4, 6, 10];
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
 export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
+  onTourStart,
   mode,
   onModeChange,
   cameraRef,
   orbitTargetRef,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isTouring, setIsTouring] = useState(false);
   const [dwell, setDwell] = useState(4);
@@ -80,7 +82,7 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
   }, [isTouring, dwell]);
 
   const startTour = () => {
-    setIsOpen(false); // clear the UI out of the way for the demo
+    onTourStart?.(); // clear the UI out of the way for the demo
     setIsTouring(true);
   };
 
@@ -126,27 +128,22 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
     'p-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition cursor-pointer disabled:opacity-40 disabled:cursor-default';
 
   return (
-    <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1.5 select-none pointer-events-none font-sans">
-      <button
-        type="button"
-        onClick={(e) => {
-          if (isTouring) setIsTouring(false);
-          else setIsOpen((o) => !o);
-          e.currentTarget.blur();
-        }}
-        aria-label={isTouring ? 'Stop tour' : 'Saved viewpoints'}
-        aria-expanded={isOpen}
-        title={isTouring ? 'Stop tour [Esc]' : 'Saved viewpoints'}
-        className="pointer-events-auto flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium transition cursor-pointer"
-      >
-        {isTouring ? <Square className="w-3 h-3" /> : <Bookmark className="w-3.5 h-3.5" />}
-        <span>
-          {isTouring ? 'Stop tour' : `Views${viewpoints.length > 0 ? ` (${viewpoints.length})` : ''}`}
-        </span>
-      </button>
+    <div className="font-sans text-[12px]">
+      {isTouring && (
+        <button
+          type="button"
+          onClick={() => setIsTouring(false)}
+          aria-label="Stop tour"
+          title="Stop tour [Esc]"
+          className="fixed top-14 left-3 z-50 flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium shadow-md transition cursor-pointer"
+        >
+          <Square className="w-3 h-3" />
+          <span>Stop tour</span>
+        </button>
+      )}
 
-      {isOpen && !isTouring && (
-        <div className="pointer-events-auto w-56 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] overflow-hidden shadow-md">
+      <>
+        <div className="text-[var(--text-primary)]">
           <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)]">
             <span className="text-[11px] font-medium">Saved views</span>
             <div className="flex items-center gap-0.5">
@@ -169,14 +166,6 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
                 className={iconBtn}
               >
                 <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                aria-label="Close saved views"
-                className={iconBtn}
-              >
-                <X className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -282,7 +271,7 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
             )}
           </div>
         </div>
-      )}
+      </>
     </div>
   );
 };

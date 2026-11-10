@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Sun, X, RotateCcw } from 'lucide-react';
+import React from 'react';
+import { RotateCcw } from 'lucide-react';
 import {
   LIGHTING_PRESETS,
   LightingPresetId,
@@ -38,31 +38,15 @@ const SliderRow: React.FC<SliderRowProps> = ({ label, value, min, max, step, dis
 );
 
 export const LightingPanel: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
   const settings = useLightingStore();
   const { preset, applyPreset, set, reset } = settings;
 
   const update = (patch: Partial<LightingSettings>) => set(patch);
 
   return (
-    <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5 select-none pointer-events-none font-sans">
-      <button
-        type="button"
-        onClick={(e) => {
-          setIsOpen((o) => !o);
-          e.currentTarget.blur();
-        }}
-        aria-label="Lighting controls"
-        aria-expanded={isOpen}
-        title="Lighting"
-        className="pointer-events-auto flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium transition cursor-pointer"
-      >
-        <Sun className="w-3.5 h-3.5" />
-        <span>Lighting</span>
-      </button>
-
-      {isOpen && (
-        <div className="pointer-events-auto w-56 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] overflow-hidden shadow-md">
+    <div className="font-sans text-[12px]">
+      <>
+        <div className="text-[var(--text-primary)]">
           <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)]">
             <span className="text-[11px] font-medium">Lighting</span>
             <div className="flex items-center gap-0.5">
@@ -74,14 +58,6 @@ export const LightingPanel: React.FC = () => {
                 className="p-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                aria-label="Close lighting controls"
-                className="p-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition cursor-pointer"
-              >
-                <X className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -154,7 +130,7 @@ export const LightingPanel: React.FC = () => {
             />
           </div>
         </div>
-      )}
+      </>
     </div>
   );
 };
