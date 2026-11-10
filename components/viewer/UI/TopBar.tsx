@@ -11,6 +11,7 @@ import {
   Maximize,
   Minimize,
   Camera,
+  Presentation,
 } from 'lucide-react';
 import { ViewerMode, UnitType, LoadedModelData } from '@/lib/types';
 import { getUnitDisplayLabel } from '@/lib/units';
@@ -25,6 +26,7 @@ interface TopBarProps {
   onResetView: () => void;
   onOpenFile: () => void;
   onScreenshot: () => void;
+  onPresent: () => void;
   screenshotLogo: boolean;
   onToggleScreenshotLogo: () => void;
   isSidebarOpen: boolean;
@@ -41,6 +43,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onResetView,
   onOpenFile,
   onScreenshot,
+  onPresent,
   screenshotLogo,
   onToggleScreenshotLogo,
   isSidebarOpen,
@@ -178,6 +181,22 @@ export const TopBar: React.FC<TopBarProps> = ({
             Logo
           </button>
         </div>
+
+        {/* Presentation mode: hides all UI */}
+        <button
+          type="button"
+          aria-label="Presentation mode [H]"
+          disabled={!hasModel}
+          onClick={(e) => {
+            onPresent();
+            e.currentTarget.blur();
+          }}
+          title="Presentation mode [H]"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] text-[12px] font-medium border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+        >
+          <Presentation className="w-3.5 h-3.5" />
+          <span className="hidden lg:inline">Present</span>
+        </button>
 
         {/* Model Units Selector */}
         <div className="flex items-center gap-1">

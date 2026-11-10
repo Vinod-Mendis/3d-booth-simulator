@@ -26,6 +26,7 @@ export const ViewerApp: React.FC = () => {
   const [mode, setMode] = useState<ViewerMode>('orbit');
   const [selectedUnit, setSelectedUnit] = useState<UnitType>('auto');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isPresenting, setIsPresenting] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('screens');
   const [isDragging, setIsDragging] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -129,6 +130,17 @@ export const ViewerApp: React.FC = () => {
     setResetViewTrigger((c) => c + 1);
   };
 
+  // Presentation mode: hide all chrome for clean demos
+  const togglePresenting = () => {
+    if (!activeModelRef.current) return;
+    if (!isPresenting) addToast('info', 'Presentation mode: press H or Esc to exit', 3000);
+    setIsPresenting(!isPresenting);
+  };
+  const togglePresentingRef = useRef(togglePresenting);
+  useEffect(() => {
+    togglePresentingRef.current = togglePresenting;
+  });
+
   // Save the current view as a PNG
   const handleScreenshot = async () => {
     const capture = captureRef.current;
@@ -209,6 +221,16 @@ export const ViewerApp: React.FC = () => {
         return;
       }
 
+      // H: Presentation mode (Esc also exits)
+      if ((e.key === 'h' || e.key === 'H') && !e.ctrlKey && !e.metaKey && modelData) {
+        togglePresentingRef.current();
+        return;
+      }
+      if (e.key === 'Escape' && isPresenting) {
+        setIsPresenting(false);
+        return;
+      }
+
       // P: Screenshot
       if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && modelData) {
         handleScreenshotRef.current();
@@ -230,7 +252,7 @@ export const ViewerApp: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modelData, mode]);
+  }, [modelData, mode, isPresenting]);
 
   // Drag and drop events on root container
   const handleDragEnter = (e: React.DragEvent) => {
@@ -317,6 +339,7 @@ export const ViewerApp: React.FC = () => {
       />
 
       {/* Top Bar Header */}
+      {!isPresenting && (
       <TopBar
         mode={mode}
         onModeChange={setMode}
@@ -330,8 +353,10 @@ export const ViewerApp: React.FC = () => {
         onToggleScreenshotLogo={() => setScreenshotLogo((v) => !v)}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onPresent={togglePresenting}
         isTouch={isTouch}
       />
+      )}
 
       {/* Main Workspace: Flex row containing Canvas & Docked Sidebar */}
       <div className="flex-1 flex flex-row min-h-0 relative overflow-hidden">
@@ -358,10 +383,12 @@ export const ViewerApp: React.FC = () => {
           )}
 
           {/* Bottom-left Info Panel */}
-          <InfoPanel modelData={modelData} />
+          {!isPresenting && <InfoPanel modelData={modelData} />}
 
           {/* Bottom-center Hint Chips */}
-          <HintChips mode={mode} hasModel={modelData !== null} isTouch={isTouch} />
+          {!isPresenting && (
+            <HintChips mode={mode} hasModel={modelData !== null} isTouch={isTouch} />
+          )}
 
           {/* Touch joystick + action buttons (phones / tablets, walk mode only) */}
           {isTouch && mode === 'walk' && modelData && <TouchControls />}
@@ -429,7 +456,7 @@ export const ViewerApp: React.FC = () => {
         {/* Docked Right Sidebar: tabbed Screens / Lighting / Views */}
         {modelData && (
           <Sidebar
-            isOpen={isSidebarOpen}
+            isOpen={isSidebarOpen && !isPresenting}
             activeTab={sidebarTab}
             onTabChange={setSidebarTab}
             panels={{
