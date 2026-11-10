@@ -7,6 +7,7 @@ import { LoadedModelData } from '@/lib/types';
 import { extractCollidableMeshes, updatePlayerPositionWithCollision } from '@/lib/collision';
 import { useScreensStore } from '@/lib/screensStore';
 import { touchInput } from '@/lib/touchInput';
+import { useViewpointsStore } from '@/lib/viewpointsStore';
 
 interface WalkControlsProps {
   modelData: LoadedModelData;
@@ -79,6 +80,9 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     fromPos: new THREE.Vector3(),
     toPos: new THREE.Vector3(),
     toQuat: new THREE.Quaternion(),
+    // Yaw/pitch to hand over to the look controls when the glide lands (0/0 for the spawn view)
+    toYaw: 0,
+    toPitch: 0,
     // Look-at point glides alongside the camera so it dollies forward instead of swinging round
     fromTarget: new THREE.Vector3(),
     toTarget: new THREE.Vector3(),
@@ -159,6 +163,8 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
     const tr = transition.current;
     tr.toPos.set(spawn.x, spawn.y + EYE_HEIGHT, spawn.z);
     tr.toQuat.setFromEuler(new THREE.Euler(0, 0, 0, 'YXZ'));
+    tr.toYaw = 0;
+    tr.toPitch = 0;
 
     const distance = camera.position.distanceTo(tr.toPos);
     const reduceMotion =
@@ -191,6 +197,50 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
   useEffect(() => {
     resetToSpawn.current();
   }, [resetTrigger, modelData.id, modelData.scaleFactor]);
+
+  // Jump to a saved viewpoint (declared after the spawn effect so it wins on a mode switch)
+  const pendingViewpoint = useViewpointsStore((s) => s.pending);
+  useEffect(() => {
+    if (!pendingViewpoint || pendingViewpoint.mode !== 'walk') return;
+    useViewpointsStore.getState().consumePending();
+
+    const tr = transition.current;
+    tr.toPos.set(...pendingViewpoint.position);
+    tr.toTarget.set(...pendingViewpoint.target);
+
+    const dir = tr.toTarget.clone().sub(tr.toPos);
+    if (dir.lengthSq() < 1e-8) dir.set(0, 0, -1);
+    dir.normalize();
+    // Forward = (-sin(yaw)cos(pitch), sin(pitch), -cos(yaw)cos(pitch))
+    const toYaw = Math.atan2(-dir.x, -dir.z);
+    const toPitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, Math.asin(dir.y)));
+    tr.toYaw = toYaw;
+    tr.toPitch = toPitch;
+    tr.toQuat.setFromEuler(new THREE.Euler(toPitch, toYaw, 0, 'YXZ'));
+
+    feetPos.current.set(tr.toPos.x, tr.toPos.y - EYE_HEIGHT, tr.toPos.z);
+
+    const distance = camera.position.distanceTo(tr.toPos);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion || distance < 0.01) {
+      tr.active = false;
+      camera.position.copy(tr.toPos);
+      camera.quaternion.copy(tr.toQuat);
+      yaw.current = toYaw;
+      pitch.current = toPitch;
+      return;
+    }
+
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    tr.fromTarget
+      .copy(camera.position)
+      .addScaledVector(forward, Math.max(camera.position.distanceTo(tr.toTarget), 1));
+    tr.fromPos.copy(camera.position);
+    tr.elapsed = 0;
+    tr.duration = THREE.MathUtils.clamp(distance / 12, TRANSITION_MIN, TRANSITION_MAX);
+    tr.active = true;
+  }, [pendingViewpoint, camera]);
 
   // Movement key definitions
   const isKeyActive = (identifiers: string[]): boolean => {
@@ -371,8 +421,8 @@ export const WalkControls: React.FC<WalkControlsProps> = ({
         tr.active = false;
         camera.quaternion.copy(tr.toQuat);
         // Discard any look input that arrived mid-flight so the hand-off is seamless
-        yaw.current = 0;
-        pitch.current = 0;
+        yaw.current = tr.toYaw;
+        pitch.current = tr.toPitch;
       }
       return;
     }

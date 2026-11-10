@@ -10,6 +10,7 @@ import { WalkControls } from './WalkControls';
 import { ScreensManager } from './screens/ScreensManager';
 import { useScreensStore } from '@/lib/screensStore';
 import { useLightingStore } from '@/lib/lightingStore';
+import { useViewpointsStore } from '@/lib/viewpointsStore';
 
 type OrbitControlsInstance = React.ComponentRef<typeof OrbitControls>;
 
@@ -136,6 +137,43 @@ function CameraController({
     if (!tr.active) tr.restoreEnabled = controls.enabled;
     tr.active = true;
   }, [modelData, mode, resetViewTrigger, camera, controlsRef]);
+
+  // Saved viewpoint requests (declared after the effect above so it wins when a mode switch is involved)
+  const pendingViewpoint = useViewpointsStore((s) => s.pending);
+  useEffect(() => {
+    if (!pendingViewpoint || pendingViewpoint.mode !== 'orbit' || mode !== 'orbit') return;
+    const controls = controlsRef.current;
+    if (!controls) return;
+    useViewpointsStore.getState().consumePending();
+
+    const tr = transition.current;
+    tr.toPos.set(...pendingViewpoint.position);
+    tr.toTarget.set(...pendingViewpoint.target);
+
+    const distance = camera.position.distanceTo(tr.toPos);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion || distance < 0.01) {
+      if (tr.active) controls.enabled = tr.restoreEnabled;
+      tr.active = false;
+      camera.position.copy(tr.toPos);
+      camera.lookAt(tr.toTarget);
+      controls.target.copy(tr.toTarget);
+      controls.update();
+      return;
+    }
+
+    // Glide from straight ahead of the current view so orientation doesn't jump
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    tr.fromTarget
+      .copy(camera.position)
+      .addScaledVector(forward, Math.max(camera.position.distanceTo(tr.toTarget), 1));
+    tr.fromPos.copy(camera.position);
+    tr.elapsed = 0;
+    tr.duration = THREE.MathUtils.clamp(distance / 12, 0.7, 1.4);
+    if (!tr.active) tr.restoreEnabled = controls.enabled;
+    tr.active = true;
+  }, [pendingViewpoint, mode, camera, controlsRef]);
 
   // Runs before OrbitControls' own frame update (subscribed earlier), so disabling it here takes effect this frame
   useFrame((_, rawDelta) => {

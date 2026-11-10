@@ -14,6 +14,8 @@ import { InfoPanel } from './UI/InfoPanel';
 import { HintChips } from './UI/HintChips';
 import { LightingPanel } from './UI/LightingPanel';
 import { Toaster } from './UI/Toaster';
+import { ViewpointsPanel } from './UI/ViewpointsPanel';
+import { useViewpointsStore } from '@/lib/viewpointsStore';
 import { ScreensPanel } from './screens/ScreensPanel';
 import { TouchControls, useIsTouchDevice } from './UI/TouchControls';
 
@@ -44,6 +46,12 @@ export const ViewerApp: React.FC = () => {
   useEffect(() => {
     useScreensStore.getState().syncModel(modelData);
   }, [modelData]);
+
+  // Saved viewpoints belong to one model; drop them when a different model is loaded
+  const modelId = modelData?.id;
+  useEffect(() => {
+    useViewpointsStore.getState().clear();
+  }, [modelId]);
 
   // Keep activeModelRef in sync for cleanup
   useEffect(() => {
@@ -311,6 +319,16 @@ export const ViewerApp: React.FC = () => {
 
           {/* Top-right Lighting Controls */}
           {modelData && <LightingPanel />}
+
+          {/* Top-left Saved Viewpoints */}
+          {modelData && (
+            <ViewpointsPanel
+              mode={mode}
+              onModeChange={setMode}
+              cameraRef={cameraRef}
+              orbitTargetRef={orbitTargetRef}
+            />
+          )}
 
           {/* Bottom-left Info Panel */}
           <InfoPanel modelData={modelData} />
