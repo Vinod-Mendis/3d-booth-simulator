@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Bookmark, ChevronLeft, ChevronRight, Plus, Trash2, X } from 'lucide-react';
+import { Bookmark, ChevronLeft, ChevronRight, Play, Plus, Square, Trash2, X } from 'lucide-react';
 import type { ViewerMode } from '@/lib/types';
 import { Viewpoint, useViewpointsStore } from '@/lib/viewpointsStore';
 
@@ -12,6 +12,10 @@ interface ViewpointsPanelProps {
   cameraRef: React.MutableRefObject<THREE.Camera | null>;
   orbitTargetRef: React.MutableRefObject<THREE.Vector3 | null>;
 }
+
+// Time allowed for the camera glide before the dwell timer starts (glides take 0.7-1.4s)
+const GLIDE_ALLOWANCE_S = 1.6;
+const DWELL_OPTIONS = [2, 4, 6, 10];
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -23,11 +27,65 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isTouring, setIsTouring] = useState(false);
+  const [dwell, setDwell] = useState(4);
+  const modeRef = useRef(mode);
+  useEffect(() => {
+    modeRef.current = mode;
+  });
   const viewpoints = useViewpointsStore((s) => s.viewpoints);
   const activeId = useViewpointsStore((s) => s.activeId);
   const { add, rename, remove, goTo } = useViewpointsStore.getState();
 
+  // Auto-tour: glide through the saved views in order, dwelling on each, looping until stopped
+  const canTour = viewpoints.length >= 2;
+  useEffect(() => {
+    if (!isTouring) return;
+    const state = useViewpointsStore.getState();
+    let index = Math.max(-1, state.viewpoints.findIndex((v) => v.id === state.activeId)) + 1;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const next = () => {
+      const list = useViewpointsStore.getState().viewpoints;
+      if (list.length < 2) {
+        setIsTouring(false);
+        return;
+      }
+      const vp = list[index % list.length];
+      index = (index % list.length) + 1;
+      if (vp.mode !== modeRef.current) onModeChange(vp.mode);
+      goTo(vp);
+      timer = setTimeout(next, (GLIDE_ALLOWANCE_S + dwell) * 1000);
+    };
+    next();
+
+    // Any manual input takes over: Escape, a click/drag on the canvas, or walk keys
+    const stop = () => setIsTouring(false);
+    const onPointerDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement | null)?.tagName === 'CANVAS') stop();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'Escape' || /^(w|a|s|d|arrowup|arrowdown|arrowleft|arrowright)$/i.test(e.key)) stop();
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTouring, dwell]);
+
+  const startTour = () => {
+    setIsOpen(false); // clear the UI out of the way for the demo
+    setIsTouring(true);
+  };
+
   const jumpTo = (vp: Viewpoint) => {
+    setIsTouring(false);
     if (vp.mode !== mode) onModeChange(vp.mode);
     goTo(vp);
   };
@@ -72,19 +130,22 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
       <button
         type="button"
         onClick={(e) => {
-          setIsOpen((o) => !o);
+          if (isTouring) setIsTouring(false);
+          else setIsOpen((o) => !o);
           e.currentTarget.blur();
         }}
-        aria-label="Saved viewpoints"
+        aria-label={isTouring ? 'Stop tour' : 'Saved viewpoints'}
         aria-expanded={isOpen}
-        title="Saved viewpoints"
+        title={isTouring ? 'Stop tour [Esc]' : 'Saved viewpoints'}
         className="pointer-events-auto flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium transition cursor-pointer"
       >
-        <Bookmark className="w-3.5 h-3.5" />
-        <span>Views{viewpoints.length > 0 ? ` (${viewpoints.length})` : ''}</span>
+        {isTouring ? <Square className="w-3 h-3" /> : <Bookmark className="w-3.5 h-3.5" />}
+        <span>
+          {isTouring ? 'Stop tour' : `Views${viewpoints.length > 0 ? ` (${viewpoints.length})` : ''}`}
+        </span>
       </button>
 
-      {isOpen && (
+      {isOpen && !isTouring && (
         <div className="pointer-events-auto w-56 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] overflow-hidden shadow-md">
           <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)]">
             <span className="text-[11px] font-medium">Saved views</span>
@@ -129,6 +190,33 @@ export const ViewpointsPanel: React.FC<ViewpointsPanelProps> = ({
               <Plus className="w-3 h-3" />
               <span>Save current view</span>
             </button>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={startTour}
+                disabled={!canTour}
+                title={canTour ? 'Fly through the saved views on a loop' : 'Save at least 2 views to start a tour'}
+                className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Play className="w-3 h-3" />
+                <span>Auto-tour</span>
+              </button>
+              <label className="sr-only" htmlFor="tour-dwell">Seconds per view</label>
+              <select
+                id="tour-dwell"
+                value={dwell}
+                onChange={(e) => setDwell(Number(e.target.value))}
+                title="Pause on each view"
+                className="h-6 px-1 text-[11px] font-mono rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-secondary)] cursor-pointer"
+              >
+                {DWELL_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}s
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {viewpoints.length === 0 ? (
               <p className="text-[11px] text-[var(--text-muted)] leading-snug">
