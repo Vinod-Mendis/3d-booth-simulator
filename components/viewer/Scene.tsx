@@ -9,6 +9,7 @@ import { ModelRoot } from './ModelRoot';
 import { WalkControls } from './WalkControls';
 import { ScreensManager } from './screens/ScreensManager';
 import { useScreensStore } from '@/lib/screensStore';
+import { useLightingStore } from '@/lib/lightingStore';
 
 type OrbitControlsInstance = React.ComponentRef<typeof OrbitControls>;
 
@@ -191,13 +192,39 @@ function Lights({ modelData, isDark }: { modelData: LoadedModelData | null; isDa
     light.shadow.camera.updateProjectionMatrix();
   }, [modelData]);
 
-  const hemiSky = isDark ? 0xe2e8f0 : 0xffffff;
-  const hemiGround = isDark ? 0x1e293b : 0x94a3b8;
-  const hemiIntensity = isDark ? 0.75 : 0.95;
-  const dirIntensity = isDark ? 1.4 : 1.6;
+  const { brightness, azimuth, elevation, warmth, shadowStrength } = useLightingStore();
 
-  const lightY = modelData ? Math.max(modelData.scaledSize.y * 2.2, 12) : 14;
-  const lightDist = modelData ? Math.max(modelData.scaledSize.z * 1.5, 12) : 14;
+  // Warmth tints both lights: cool blue <- white -> warm orange
+  const tint = (base: number) => {
+    const color = new THREE.Color(base);
+    color.lerp(new THREE.Color(warmth >= 0 ? 0xffa95c : 0x8fb8ff), Math.abs(warmth) * 0.5);
+    return color;
+  };
+  const hemiSky = tint(isDark ? 0xe2e8f0 : 0xffffff);
+  const hemiGround = isDark ? 0x1e293b : 0x94a3b8;
+  const hemiIntensity = (isDark ? 0.75 : 0.95) * brightness;
+  const dirIntensity = (isDark ? 1.4 : 1.6) * brightness;
+  const dirColor = tint(0xffffff);
+
+  // Sun position from compass direction + height, far enough to clear the model
+  const span = modelData
+    ? Math.max(modelData.scaledSize.x, modelData.scaledSize.y, modelData.scaledSize.z)
+    : 10;
+  const radius = Math.max(span * 1.8, 18);
+  const az = THREE.MathUtils.degToRad(azimuth);
+  const el = THREE.MathUtils.degToRad(elevation);
+  const sunPosition: [number, number, number] = [
+    radius * Math.cos(el) * Math.sin(az),
+    radius * Math.sin(el),
+    radius * Math.cos(el) * Math.cos(az),
+  ];
+
+  useEffect(() => {
+    if (dirLightRef.current) {
+      // 0.6 is the original default; 1 = fully black shadows
+      dirLightRef.current.shadow.intensity = Math.min(1, shadowStrength / 0.6);
+    }
+  }, [shadowStrength]);
 
   return (
     <>
@@ -207,7 +234,8 @@ function Lights({ modelData, isDark }: { modelData: LoadedModelData | null; isDa
       />
       <directionalLight
         ref={dirLightRef}
-        position={[lightDist * 0.8, lightY, lightDist]}
+        position={sunPosition}
+        color={dirColor}
         intensity={dirIntensity}
         castShadow
       />
@@ -228,6 +256,7 @@ export const Scene: React.FC<SceneProps> = ({
 }) => {
   const isDark = theme === 'dark';
   const interactiveScreenId = useScreensStore((s) => s.interactiveScreenId);
+  const shadowStrength = useLightingStore((s) => s.shadowStrength);
   const controlsRef = useRef<OrbitControlsInstance | null>(null);
   const [groundMesh, setGroundMesh] = useState<THREE.Mesh | null>(null);
   const [isGizmoDragging, setIsGizmoDragging] = useState(false);
@@ -286,7 +315,7 @@ export const Scene: React.FC<SceneProps> = ({
           receiveShadow
         >
           <planeGeometry args={[200, 200]} />
-          <shadowMaterial opacity={isDark ? 0.45 : 0.3} />
+          <shadowMaterial opacity={shadowStrength * (isDark ? 0.75 : 0.5)} />
         </mesh>
 
         {/* Faint 1-meter grid at y = -0.004 */}

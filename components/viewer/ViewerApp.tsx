@@ -12,6 +12,7 @@ import { TopBar } from './UI/TopBar';
 import { EmptyState } from './UI/EmptyState';
 import { InfoPanel } from './UI/InfoPanel';
 import { HintChips } from './UI/HintChips';
+import { LightingPanel } from './UI/LightingPanel';
 import { Toaster } from './UI/Toaster';
 import { ScreensPanel } from './screens/ScreensPanel';
 import { TouchControls, useIsTouchDevice } from './UI/TouchControls';
@@ -307,6 +308,9 @@ export const ViewerApp: React.FC = () => {
               onTrySample={handleTrySample}
             />
           )}
+
+          {/* Top-right Lighting Controls */}
+          {modelData && <LightingPanel />}
 
           {/* Bottom-left Info Panel */}
           <InfoPanel modelData={modelData} />
