@@ -95,6 +95,22 @@ function CameraController({
     const distance = camera.position.distanceTo(tr.toPos);
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+    if (isNewModel && !reduceMotion && controls) {
+      // New model: push the camera in from further back, in step with the model's fade-in
+      const start = tr.toPos.clone().sub(tr.toTarget).multiplyScalar(1.3).add(tr.toTarget);
+      camera.position.copy(start);
+      camera.lookAt(tr.toTarget);
+      controls.target.copy(tr.toTarget);
+      controls.update();
+      tr.fromPos.copy(start);
+      tr.fromTarget.copy(tr.toTarget);
+      tr.elapsed = 0;
+      tr.duration = 1.2;
+      if (!tr.active) tr.restoreEnabled = controls.enabled;
+      tr.active = true;
+      return;
+    }
+
     if (isNewModel || reduceMotion || distance < 0.01 || !controls) {
       if (tr.active && controls) controls.enabled = tr.restoreEnabled;
       tr.active = false;
