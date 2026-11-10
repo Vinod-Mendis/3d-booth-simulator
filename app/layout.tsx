@@ -1,3 +1,5 @@
+/** @format */
+
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -13,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pre-Show",
+  title: "Pre-Show | 3D Booth Simulator",
   description:
     "Interactive 3D booth and stage walkthrough viewer for design review and approvals",
   // Lets iPhone users launch full-screen from the Home Screen (Safari has no Fullscreen API there)
@@ -36,8 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased overflow-hidden`}
-    >
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased overflow-hidden`}>
       <body className="h-full w-full overflow-hidden flex flex-col">
         {children}
       </body>
